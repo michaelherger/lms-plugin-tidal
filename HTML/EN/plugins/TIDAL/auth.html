@@ -1,0 +1,59 @@
+[% IF useExtJS && deviceCode; extJsScripts = BLOCK %]
+	<script TYPE="text/javascript">
+		Ext.onReady(function() {
+			// check whether credentials have been saved
+			new Ext.util.TaskRunner().start({
+				run: function() {
+					Ext.Ajax.request({
+						url: '/plugins/TIDAL/settings/hasCredentials?deviceCode=[% deviceCode %]',
+						success: function(response, options){
+							response = Ext.util.JSON.decode(response.responseText);
+
+							if (response.hasCredentials)
+								window.location.href = 'settings.html';
+						}
+					});
+				},
+				interval: 1000
+			});
+		});
+	</script>
+	<style>
+	<!--
+		div.spotty-instructions {
+			margin: 10px;
+			line-height: 150%;
+		}
+
+		ol.spotty {
+			list-style-type: decimal;
+			list-style-position: inside;
+		}
+	-->
+	</style>
+[% END; ELSIF deviceCode %]
+	<script TYPE="text/javascript" language="JavaScript">
+		window.setInterval(function () {
+			new Ajax.Request('/plugins/TIDAL/settings/hasCredentials?deviceCode=[% deviceCode %]', {
+				onSuccess: function(response) {
+					response = response.responseText.evalJSON();
+
+					if (response.hasCredentials)
+						window.location.href = 'settings.html';
+				}
+			});
+		}, 1000);
+	</script>
+[% END %]
+[% PROCESS settings/header.html %]
+
+	[% WRAPPER setting title="PLUGIN_TIDAL_AUTH" desc="" %]
+	<div style="padding-bottom: 7px;">[% "PLUGIN_TIDAL_FOLLOW_LINK" | string %]</div>
+	<div style="padding-bottom: 7px;"><a href="[% followAuthLink %]" target="_blank">[% followAuthLink %]</a></div>
+	<div>
+		<input name="deviceCode" type="hidden" value="[% deviceCode %]" />
+		<input name="cancelAuth" type="submit" value="[% "CANCEL" | string %]" class="stdclick" />
+	</div>
+	[% END %]
+
+[% PROCESS settings/footer.html %]

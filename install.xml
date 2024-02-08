@@ -1,0 +1,14 @@
+<?xml version='1.0' standalone='yes'?>
+<extensions>
+  <id>16da8158-263f-4347-8125-184372ea5610</id>
+  <module>Plugins::TIDAL::Plugin</module>
+  <name>PLUGIN_TIDAL_NAME</name>
+  <description>PLUGIN_TIDAL_NAME</description>
+  <icon>plugins/TIDAL/html/tidal.png</icon>
+  <creator>Michael Herger</creator>
+  <version>0.0.1</version>
+  <targetApplication>
+    <minVersion>8.4.0</minVersion>
+    <maxVersion>*</maxVersion>
+  </targetApplication>
+</extensions>

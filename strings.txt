@@ -1,0 +1,40 @@
+PLUGIN_TIDAL_NAME
+	EN	TIDAL
+
+PLUGIN_TIDAL_ADD_ACCOUNT
+	CS	Přidat účet
+	DE	Konto hinzufügen
+	EN	Add Account
+	FR	Ajouter un compte
+	NL	Account toevoegen
+
+PLUGIN_TIDAL_AUTH
+	CS	Autorizace TIDAL
+	DE	TIDAL Anmeldung
+	EN	TIDAL Authorization
+	FR	Autorisation TIDAL
+	NL	TIDAL Autorisatie
+
+PLUGIN_TIDAL_IMPORT_LIBRARY
+	CS	Importovat
+	DE	Importieren
+	EN	Import
+	FR	Importer
+	NL	Importeren
+
+PLUGIN_TIDAL_ACCOUNT
+	CS	Účet
+	DA	Konto
+	DE	Konto
+	EN	Account
+	ES	Cuenta
+	FI	Tili
+	FR	Compte
+	NL	Account
+	NO	Konto
+	PL	Konto
+	RU	Учетная запись
+	SV	Konto
+
+PLUGIN_TIDAL_FOLLOW_LINK
+	EN	The following link takes you to TIDAL for authentication. Please follow it grant Logitech Media Server access to your TIDAL account. Once you've completed sign-in come back here:
