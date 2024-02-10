@@ -59,6 +59,26 @@ sub handleFeed {
 	}
 
 	my $items = [{
+		name => cstring($client, 'FAVORITES'),
+		image => 'html/images/favorites.png',
+		type => 'outline',
+		items => [{
+			name => cstring($client, 'ARTISTS'),
+			type => 'link',
+			url => \&getFavorites,
+			passthrough => [{ type => 'artists' }],
+		},{
+			name => cstring($client, 'ALBUMS'),
+			type => 'link',
+			url => \&getFavorites,
+			passthrough => [{ type => 'albums' }],
+		},{
+			name => cstring($client, 'PLAYLISTS'),
+			type => 'link',
+			url => \&getFavorites,
+			passthrough => [{ type => 'playlists' }],
+		}]
+	},{
 		name  => cstring($client, 'SEARCH'),
 		image => 'html/images/search.png',
 		type => 'link',
@@ -141,6 +161,20 @@ sub getSearches {
 
 	$callback->( { items => $menu } );
 	return;
+}
+
+sub getFavorites {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->getFavorites(sub {
+		my $items = shift;
+
+		$items = [ map { _renderItem($client, $_) } @$items ] if $items;
+
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{type});
 }
 
 sub getArtistAlbums {

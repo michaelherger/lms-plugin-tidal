@@ -159,6 +159,24 @@ sub playlist {
 	});
 }
 
+sub getFavorites {
+	my ($self, $cb, $type) = @_;
+
+	return $cb->() unless $type;
+
+	my $userId = $self->userId || return $cb->();
+
+	$self->_get("/users/$userId/favorites/$type", sub {
+		my $result = shift;
+
+		my $items = [ map { $_->{item} } @{$result->{items} || []} ] if $result;
+		$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $items && $type eq 'tracks';
+
+		$cb->($items);
+	});
+}
+
+
 sub getTrackUrl {
 	my ($self, $cb, $id, $params) = @_;
 
@@ -371,7 +389,7 @@ sub _get {
 				{
 					cache => 1,
 				}
-			)->get(sprintf('%s%s?%s&limit=%s', BURL, $url, $query, $params->{limit} || 5), %headers);
+			)->get(sprintf('%s%s?%s&limit=%s', BURL, $url, $query, $params->{limit} || 50), %headers);
 		}
 	});
 }
