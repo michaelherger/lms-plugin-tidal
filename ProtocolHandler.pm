@@ -221,7 +221,7 @@ sub getMetadataFor {
 	my $now = time();
 
 	# first cleanup old requests in case some got lost
-	@pendingMeta = grep { $_->{time} < $now + 60 } @pendingMeta;
+	@pendingMeta = grep { $_->{time} + 60 > $now } @pendingMeta;
 
 	# only proceed if our request is not pending and we have less than 10 in parallel
 	if ( !(grep { $_->{id} == $trackId } @pendingMeta) && scalar(@pendingMeta) < 10 ) {
