@@ -62,7 +62,12 @@ sub search {
 	my ($self, $cb, $args) = @_;
 
 	$self->_get('/search' . ($args->{type} || ''), sub {
-		$cb->(@_);
+		my $result = shift;
+
+		my $items = $result->{items} if $result && ref $result;
+		$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $args->{type} =~ /tracks/;
+
+		$cb->($items);
 	}, {
 		query => $args->{search}
 	});
@@ -72,7 +77,21 @@ sub tracks {
 	my ($self, $cb, $id) = @_;
 
 	$self->_get("/tracks/$id", sub {
-		$cb->(@_);
+		my $track = shift;
+		($track) = @{ Plugins::TIDAL::API->cacheTrackMetadata([$track]) } if $track;
+		$cb->($track);
+	});
+}
+
+sub albumTracks {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get("/albums/$id/tracks", sub {
+		my $album = shift;
+		my $tracks = $album->{items} if $album;
+		$tracks = Plugins::TIDAL::API->cacheTrackMetadata($tracks) if $tracks;
+
+		$cb->($tracks || []);
 	});
 }
 
@@ -88,7 +107,10 @@ sub genreByType {
 	my ($self, $cb, $genre, $type) = @_;
 
 	$self->_get("/genres/$genre/$type", sub {
-		$cb->(@_);
+		my $results = shift;
+		my $items = $results->{items} if $results;
+		$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $items && $type eq 'tracks';
+		$cb->($items || []);
 	});
 }
 
@@ -96,7 +118,15 @@ sub playlist {
 	my ($self, $cb, $uuid) = @_;
 
 	$self->_get("/playlists/$uuid/items", sub {
-		$cb->(@_);
+		my $result = shift;
+
+		my $items = Plugins::TIDAL::API->cacheTrackMetadata([ map {
+			$_->{item}
+		} grep {
+			$_->{type} && $_->{type} eq 'track'
+		} @{$result->{items} || []} ]) if $result;
+
+		$cb->($items || []);
 	});
 }
 
@@ -308,8 +338,11 @@ sub _get {
 					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http));
 
 					$cb->();
+				},
+				{
+					cache => 1,
 				}
-			)->get(sprintf('%s%s?%s', BURL, $url, $query), %headers);
+			)->get(sprintf('%s%s?%s&limit=%s', BURL, $url, $query, $params->{limit} || 50), %headers);
 		}
 	});
 }

@@ -8,6 +8,7 @@ use Scalar::Util qw(blessed);
 use MIME::Base64 qw(encode_base64 decode_base64);
 
 use Slim::Networking::SqueezeNetwork;
+use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
@@ -18,6 +19,7 @@ use base qw(Slim::Player::Protocols::HTTPS);
 my $prefs = preferences('plugin.tidal');
 my $serverPrefs = preferences('server');
 my $log = logger('plugin.tidal');
+my $cache = Slim::Utils::Cache->new;
 
 my $URL_REGEX = qr{^https://(?:\w+\.)?tidal.com/(?:browse/)?(track|playlist|album|artist|mix)/([a-z\d-]+)}i;
 Slim::Player::ProtocolHandlers->registerURLHandler($URL_REGEX, __PACKAGE__);
@@ -158,7 +160,6 @@ sub getNextTrack {
 		Slim::Utils::Scanner::Remote::parseRemoteHeader(
 			$song->track, $streamUrl, $format,
 			sub {
-				my $cache = Slim::Utils::Cache->new;
 				my $meta = $cache->get('tidal_meta_' . $trackId);
 
 				# update what we got from parsing actual stream (we shoudl already have something)
@@ -178,7 +179,7 @@ sub getNextTrack {
 				$successCb->();
 			}
 		);
-	}, $trackId, 
+	}, $trackId,
 	{
 		audioquality => $prefs->get('quality'),
 		playbackmode => 'STREAM',
@@ -210,12 +211,11 @@ sub getMetadataFor {
 	my ( $class, $client, $url ) = @_;
 	return {} unless $url;
 
-	my $cache = Slim::Utils::Cache->new;
 	my $trackId = _getId($url);
 
-	# if metadata is in cache (not just bitrate), we have all we need
+	# if metadata is in cache, we have all we need
 	my $meta = $cache->get( 'tidal_meta_' . ($trackId || '') );
-	return $meta if $meta && $meta->{type} eq $class->getFormat() && exists $meta->{duration};
+	return $meta if $meta && exists $meta->{duration};
 
 	my $now = time();
 
@@ -233,10 +233,10 @@ sub getMetadataFor {
 		main::DEBUGLOG && $log->is_debug && $log->debug("adding metadata query for $trackId");
 
 		Plugins::TIDAL::Plugin::getAPIHandler($client)->tracks(sub {
+			my $meta = shift;
 			@pendingMeta = grep { $_->{id} != $trackId } @pendingMeta;
-			return unless $_[0];
+			return unless $meta;
 
-			my $meta = $class->cacheMetadata($_[0]);
 			main::DEBUGLOG && $log->is_debug && $log->debug("found metadata for $trackId", Data::Dump::dump($meta));
 
 			# Update the playlist time so the web will refresh, etc
@@ -253,30 +253,6 @@ sub getMetadataFor {
 		icon      => $icon,
 		cover     => $icon,
 	};
-}
-
-sub cacheMetadata {
-	my ($class, $entry) = @_;
-	my $cache = Slim::Utils::Cache->new;
-	my $oldMeta = $cache->get( 'tidal_meta_' . $entry->{id}) || {};
-	my $icon = Plugins::TIDAL::API->getImageUrl($entry) || $class->getIcon;
-
-	# consolidate metadata in case parsing of stream came first (huh?)
-	my $meta = {
-		%$oldMeta,
-		title => $entry->{title},
-		artist => $entry->{artist}->{name},
-		album => $entry->{album}->{title},
-		duration => $entry->{duration} * 1000,
-		icon => $icon,
-		cover => $icon,
-		replay_gain => $entry->{replayGain} || 0,
-		info_link => 'plugins/tidal/trackinfo.html',
-		type => getFormat(),
-	};
-
-	$cache->set( 'tidal_meta_' . $entry->{id}, $meta, 86400);
-	return $meta;
 }
 
 sub getIcon {

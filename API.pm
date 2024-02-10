@@ -3,6 +3,7 @@ package Plugins::TIDAL::API;
 use strict;
 use Exporter::Lite;
 
+use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 
@@ -26,6 +27,7 @@ use constant IMAGE_SIZES => {
 	playlistSquare => '1080x1080',
 };
 
+my $cache = Slim::Utils::Cache->new;
 my $log = logger('plugin.tidal');
 my $prefs = preferences('plugin.tidal');
 
@@ -93,15 +95,48 @@ sub typeOfItem {
 		return 'artist';
 	}
 	# tracks?
-	elsif ( !$item->{type} || defined $item->{allowStreaming}) {
+	elsif ( !$item->{type} || defined $item->{duration}) {
 		return 'track';
 	}
 	elsif ( main::INFOLOG ) {
 		$log->warn('unknown tidal item type: ' . Data::Dump::dump($item));
+		Slim::Utils::Log::logBacktrace('');
 	}
 
 	return '';
 }
 
+sub cacheTrackMetadata {
+	my ($class, $tracks) = @_;
+
+	return [] unless $tracks;
+
+	return [ map {
+		my $entry = $_;
+
+		my $oldMeta = $cache->get( 'tidal_meta_' . $entry->{id}) || {};
+		my $icon = $class->getImageUrl($entry, 'track') || Plugins::TIDAL::Protocolhandler->getIcon();
+
+		# consolidate metadata in case parsing of stream came first (huh?)
+		my $meta = {
+			%$oldMeta,
+			id => $entry->{id},
+			title => $entry->{title},
+			artist => $entry->{artist}->{name},
+			artists => $entry->{artists},
+			album => $entry->{album}->{title},
+			duration => $entry->{duration} * 1000,
+			icon => $icon,
+			cover => $icon,
+			replay_gain => $entry->{replayGain} || 0,
+			disc => $entry->{volumeNumber},
+		};
+
+		# cache track metadata aggressively
+		$cache->set( 'tidal_meta_' . $entry->{id}, $meta, time() + 90 * 86400);
+
+		$meta;
+	} @$tracks ];
+}
 
 1;

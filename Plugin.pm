@@ -92,11 +92,22 @@ sub getSearches {
 		name => cstring($client, 'TRACKS'),
 		type  => 'search',
 		url   => \&search,
-		passthrough => [ { type => 'tracks', render => \&_renderTracks } ],
+		passthrough => [ { type => 'tracks' } ],
 	} ];
 
 	$callback->( { items => $menu } );
 	return;
+}
+
+sub getAlbum {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->albumTracks(sub {
+		my $items = _renderTracks(shift);
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{id});
 }
 
 sub getGenres {
@@ -105,8 +116,23 @@ sub getGenres {
 	getAPIHandler($client)->genres(sub {
 		my $items = [ map { {
 			name => $_->{name},
-			type => 'link',
-			url => \&getGenrePAT,
+			type => 'outline',
+			items => [ {
+				name => cstring($client, 'PLAYLISTS'),
+				type  => 'link',
+				url   => \&getGenreItems,
+				passthrough => [ { genre => $_->{path}, type => 'playlists' } ],
+			}, {
+				name => cstring($client, 'ALBUMS'),
+				type  => 'link',
+				url   => \&getGenreItems,
+				passthrough => [ { genre => $_->{path}, type => 'albums' } ],
+			}, {
+				name => cstring($client, 'TRACKS'),
+				type  => 'link',
+				url   => \&getGenreItems,
+				passthrough => [ { genre => $_->{path}, type => 'tracks' } ],
+			} ],
 			image => Plugins::TIDAL::API->getImageUrl($_, 'genre'),
 			passthrough => [ { genre => $_->{path} } ],
 		} } @{$_[0]} ];
@@ -115,33 +141,11 @@ sub getGenres {
 	});
 }
 
-sub getGenrePAT {
-	my ( $client, $callback, $args, $params ) = @_;
-
-	my $menu = [ {
-		name => cstring($client, 'PLAYLISTS'),
-		type  => 'link',
-		url   => \&getGenreItems,
-		passthrough => [ { genre => $params->{genre}, type => 'playlists', render => \&_renderPlaylists } ],
-	}, {
-		name => cstring($client, 'ALBUMS'),
-		type  => 'link',
-		url   => \&getGenreItems,
-		passthrough => [ { genre => $params->{genre}, type => 'albums', render => \&_renderAlbum } ],
-	}, {
-		name => cstring($client, 'TRACKS'),
-		type  => 'link',
-		url   => \&getGenreItems,
-		passthrough => [ { genre => $params->{genre}, type => 'tracks', render => \&_renderTracks } ],
-	} ];
-
-	$callback->( { items => $menu } );
-}
-
 sub getGenreItems {
 	my ( $client, $cb, $args, $params ) = @_;
 	getAPIHandler($client)->genreByType(sub {
-		my $items = $params->{render}->(shift);
+		my $items = [ map { _renderItem($_) } @{$_[0]} ];
+
 		$cb->( {
 			items => $items
 		} );
@@ -165,54 +169,119 @@ sub search {
 	$args->{type} = "/$params->{type}";
 
 	getAPIHandler($client)->search(sub {
-		my $items = $params->{render}->(shift);
+		my $items = shift;
+		$items = [ map { _renderItem($_) } @$items ] if $items;
+
 		$cb->( {
-			items => $items
+			items => $items || []
 		} );
 	}, $args);
 
 }
 
-sub _renderPlaylists {
-	my $items = [];
+sub _renderItem {
+	my ($item) = @_;
 
-	foreach my $item (@{$_[0]->{items}}) {
-		# TODO: cache playlist items (in playlist API I guess)
-		push @$items, {
-			name => $item->{title},
-			type => 'playlist',
-			url => \&getPlaylist,
-			image => Plugins::TIDAL::API->getImageUrl($item),
-			passthrough => [ { uuid => $item->{uuid} } ],
-		};
+	my $type = Plugins::TIDAL::API->typeOfItem($item);
+
+	if ($type eq 'track') {
+		return _renderTrack($item);
 	}
+	elsif ($type eq 'album') {
+		return _renderAlbum($item);
+	}
+	elsif ($type eq 'artist') {
+		return _renderArtist($item);
+	}
+	elsif ($type eq 'playlist') {
+		return _renderPlaylist($item);
+	}
+}
 
-	return $items;
+sub _renderPlaylists {
+	my $results = shift;
+
+	return [ map {
+		_renderPlaylist($_)
+	} @{$results->{items}}];
+}
+
+sub _renderPlaylist {
+	my $item = shift;
+
+	return {
+		name => $item->{title},
+		line1 => $item->{title},
+		line2 => join(', ', map { $_->{name} } @{$item->{promotedArtists} || []}),
+		type => 'playlist',
+		url => \&getPlaylist,
+		image => Plugins::TIDAL::API->getImageUrl($item),
+		passthrough => [ { uuid => $item->{uuid} } ],
+	};
 }
 
 sub _renderAlbums {
+	my $results = shift;
+
+	return [ map {
+		_renderAlbum($_);
+	} @{$results->{items}} ];
+}
+
+sub _renderAlbum {
+	my $item = shift;
+
+	return {
+		name => $item->{title},
+		line1 => $item->{title},
+		line2 => $item->{artist}->{name},
+		type => 'playlist',
+		url => \&getAlbum,
+		image => Plugins::TIDAL::API->getImageUrl($item),
+		passthrough => [{ id => $item->{id} }],
+	};
 }
 
 sub _renderTracks {
-	my $items = [];
+	my $tracks = shift;
 
-	foreach my $item (@{$_[0]->{items}}) {
-		next if $item->{track} && $item->{track} ne 'track';
+	return [ map {
+		_renderTrack($_);
+	} @$tracks ];
+}
 
-		# may have one lower level
-		$item = $item->{item} if $item->{item};
-		my $meta = Plugins::TIDAL::ProtocolHandler->cacheMetadata($item, 1);
+sub _renderTrack {
+	my $item = shift;
 
-		push @$items, {
-			name => $meta->{title},
-			on_select => 'play',
-			play => "tidal://$item->{id}." . Plugins::TIDAL::ProtocolHandler::getFormat(),
-			playall => 1,
-			image => $meta->{cover},
-		};
-	}
+	return {
+		name => $item->{title},
+		line1 => $item->{title},
+		line2 => $item->{artist},
+		on_select => 'play',
+		play => "tidal://$item->{id}." . Plugins::TIDAL::ProtocolHandler::getFormat(),
+		playall => 1,
+		image => $item->{cover},
+	};
+}
 
-	return $items;
+sub _renderArtists {
+	my $results = shift;
+
+	return [ map {
+		_renderArtist($_);
+	} @{$results->{items}} ];
+}
+
+sub _renderArtist {
+	my $item = shift;
+
+	return {
+		name => $item->{name},
+		url => \&getArtist,
+		type => 'link',
+		image => Plugins::TIDAL::API->getImageUrl($item),
+		passthrough => [{ id => $item->{id} }],
+	};
 }
 
 sub getAPIHandler {
