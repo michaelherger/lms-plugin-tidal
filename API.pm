@@ -6,14 +6,14 @@ use Exporter::Lite;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 
-our @EXPORT_OK = qw(AURL BURL KURL SCOPES GRANT_TYPE);
+our @EXPORT_OK = qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE);
 
 use constant AURL => 'https://auth.tidal.com';
 use constant BURL => 'https://api.tidal.com/v1';
 use constant KURL => 'https://gist.githubusercontent.com/yaronzz/48d01f5a24b4b7b37f19443977c22cd6/raw/5a91ced856f06fe226c1c72996685463393a9d00/tidal-api-key.json';
 use constant IURL => 'http://resources.tidal.com/images/';
 use constant SCOPES => 'r_usr+w_usr';
-use constant GRANT_TYPE => 'urn:ietf:params:oauth:grant-type:device_code';
+use constant GRANT_TYPE_DEVICE => 'urn:ietf:params:oauth:grant-type:device_code';
 
 use constant IMAGE_SIZES => {
 	album  => '1280x1280',
@@ -29,12 +29,20 @@ use constant IMAGE_SIZES => {
 my $log = logger('plugin.tidal');
 my $prefs = preferences('plugin.tidal');
 
-sub getSomeAccount {
+sub getSomeUserId {
 	my $accounts = $prefs->get('accounts');
 
 	my ($account) = keys %$accounts;
 
 	return $account;
+}
+
+sub getCountryCode {
+	my ($class, $userId) = @_;
+	my $accounts = $prefs->get('accounts') || {};
+
+	return 'US' unless $accounts && $userId && $accounts->{$userId};
+	return $accounts->{$userId}->{countryCode} || 'US';
 }
 
 sub getImageUrl {

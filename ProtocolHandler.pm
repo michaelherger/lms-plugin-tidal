@@ -129,7 +129,7 @@ sub getNextTrack {
 	}
 
 
-	Plugins::TIDAL::API::Async->_get("/tracks/$trackId/playbackinfopostpaywall", sub {
+	Plugins::TIDAL::Plugin::getAPIHandler($client)->_get("/tracks/$trackId/playbackinfopostpaywall", sub {
 			my $response = shift;
 
 			# no DASH or other for now
@@ -233,7 +233,7 @@ sub getMetadataFor {
 
 		main::DEBUGLOG && $log->is_debug && $log->debug("adding metadata query for $trackId");
 
-		Plugins::TIDAL::API::Async->_get("/tracks/$trackId/", sub {
+		Plugins::TIDAL::Plugin::getAPIHandler($client)->_get("/tracks/$trackId/", sub {
 			@pendingMeta = grep { $_->{id} != $trackId } @pendingMeta;
 			return unless $_[0];
 

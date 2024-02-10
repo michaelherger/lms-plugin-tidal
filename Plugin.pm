@@ -23,7 +23,6 @@ sub initPlugin {
 	my $class = shift;
 
 	$prefs->init({
-		country => 'US',
 		quality => 'HIGH',
 	});
 
@@ -35,7 +34,7 @@ sub initPlugin {
 		Plugins::TIDAL::Settings->new();
 		Plugins::TIDAL::Settings::Auth->new();
 	}
-	
+
 	Slim::Player::ProtocolHandlers->registerHandler('tidal', 'Plugins::TIDAL::ProtocolHandler');
 
 	$class->SUPER::initPlugin(
@@ -65,33 +64,32 @@ sub handleFeed {
 sub getSearches {
 	my ( $client, $callback, $args ) = @_;
 	my $menu = [];
-	
+
 	$menu = [ {
 		name => cstring($client, 'EVERYTHING'),
 		type  => 'search',
 		url   => \&search,
-		}, { 
+	}, {
 		name => cstring($client, 'PLAYLISTS'),
 		type  => 'search',
 		url   => \&search,
 		passthrough => [ { type => 'playlists'	} ],
-		}, { 
+	}, {
 		name => cstring($client, 'ARTISTS'),
 		type  => 'search',
 		url   => \&search,
 		passthrough => [ { type => 'artists' } ],
-		}, {
+	}, {
 		name => cstring($client, 'ALBUMS'),
 		type  => 'search',
 		url   => \&search,
 		passthrough => [ { type => 'albums' } ],
-		}, {
+	}, {
 		name => cstring($client, 'TRACKS'),
 		type  => 'search',
 		url   => \&search,
 		passthrough => [ { type => 'tracks', render => \&_renderTracks } ],
-		},
-	];
+	} ];
 
 	$callback->( { items => $menu } );
 	return;
@@ -103,7 +101,7 @@ sub search {
 	$params->{search} ||= $args->{query};
 	$params->{type} = "/$args->{type}";
 
-	Plugins::TIDAL::API::Async->search(sub {
+	getAPIHandler($client)->search(sub {
 		my $items = $args->{render}->(shift);
 		$cb->( {
 			items => $items
@@ -114,9 +112,9 @@ sub search {
 
 sub _renderTracks {
 	my $items = [];
-	
+
 	foreach my $item (@{$_[0]->{items}}) {
-		my $meta = Plugins::TIDAL::ProtocolHandler->cacheMetadata($item, 1);		
+		my $meta = Plugins::TIDAL::ProtocolHandler->cacheMetadata($item, 1);
 		push @$items, {
 			name => $meta->{title},
 			on_select => 'play',
@@ -125,8 +123,39 @@ sub _renderTracks {
 			image => $meta->{cover},
 		};
 	}
-	
+
 	return $items;
+}
+
+sub getAPIHandler {
+	my ($client) = @_;
+
+	my $api;
+
+	if (ref $client) {
+		$api = $client->pluginData('api');
+
+		if ( !$api ) {
+			# if there's no account assigned to the player, just pick one
+			if ( !$prefs->client($client)->get('userId') ) {
+				my $userId = Plugins::TIDAL::API->getSomeUserId();
+				$prefs->client($client)->set('userId', $userId) if $userId;
+			}
+
+			$api = $client->pluginData( api => Plugins::TIDAL::API::Async->new({
+				client => $client
+			}) );
+		}
+	}
+	else {
+		$api = Plugins::TIDAL::API::Async->new({
+			userId => Plugins::TIDAL::API->getSomeUserId()
+		});
+	}
+
+	logBacktrace("Failed to get a TIDAL API instance: $client") unless $api;
+
+	return $api;
 }
 
 1;

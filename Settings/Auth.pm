@@ -51,16 +51,6 @@ sub handler {
 
 			if ($accountInfo->{user} && $accountInfo->{user_id}) {
 				main::DEBUGLOG && $log->is_debug && $log->debug('Got account info back: ' . Data::Dump::dump($accountInfo));
-
-				my $accounts = $prefs->get('accounts');
-
-				my $userId = $accountInfo->{user_id};
-				# have token expire a little early
-				$cache->set("tidal_at_$userId", $accountInfo->{access_token}, $accountInfo->{expires_in} - 300);
-
-				$accountInfo->{user}->{refreshToken} = $accountInfo->{refresh_token};
-				$accounts->{$userId} = $accountInfo->{user};
-				$prefs->set('accounts', $accounts);
 			}
 			else {
 				$log->error('Did not get any account information back');
