@@ -162,13 +162,15 @@ sub fetchKs {
 				$keys = [ sort {
 					$b->{valid} <=> $a->{valid}
 				} grep {
-					$_->{cid} && $_->{sec}
+					$_->{cid} && $_->{sec} && $_->{valid}
 				} map {
 					{
 						cid => $_->{clientId},
 						sec => $_->{clientSecret},
 						valid => $_->{valid} =~ /true/i ? 1 : 0
 					}
+				} grep {
+					$_->{formats} =~ /Normal/
 				} @$keys ];
 
 				if (my $key = shift @$keys) {
