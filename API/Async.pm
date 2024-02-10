@@ -27,9 +27,9 @@ sub init {
 }
 
 sub search {
-	my ($self, $cb, $args) = @_;
+	my ($self, $cb, $args, $params) = @_;
 
-	$self->_get('/search/albums', sub {
+	$self->_get('/search' . ($args->{type} || ''), sub {
 		$cb->(@_);
 	}, {
 		query => $args->{search}
