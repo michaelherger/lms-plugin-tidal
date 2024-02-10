@@ -48,6 +48,16 @@ sub initPlugin {
 # TODO - check for account, allow account selection etc.
 sub handleFeed {
 	my ($client, $cb, $args) = @_;
+
+	if ( !Plugins::TIDAL::API->getSomeUserId() ) {
+		return $cb->({
+			items => [{
+				name => cstring($client, 'PLUGIN_TIDAL_REQUIRES_CREDENTIALS'),
+				type => 'textarea',
+			}]
+		});
+	}
+
 	my $items = [{
 		name  => cstring($client, 'SEARCH'),
 		image => 'html/images/search.png',
@@ -61,6 +71,41 @@ sub handleFeed {
 	} ];
 
 	# TODO - more menu items...
+
+
+	if ($client && scalar @{ keys %{$prefs->get('accounts')} || {} } > 1) {
+		push @$items, {
+			name => cstring($client, 'PLUGIN_TIDAL_SELECT_ACCOUNT'),
+			image => __PACKAGE__->_pluginDataFor('icon'),
+			url => \&selectAccount,
+		};
+	}
+
+	$cb->({ items => $items });
+}
+
+sub selectAccount {
+	my $cb = $_[1];
+
+	my $items = [ map {
+		{
+			name => $_->{nickname} || $_->{username},
+			url => sub {
+				my ($client, $cb2, $params, $args) = @_;
+
+				$client->pluginData(api => 0);
+				$prefs->client($client)->set('userId', $args->{id});
+
+				$cb2->({ items => [{
+					nextWindow => 'grandparent',
+				}] });
+			},
+			passthrough => [{
+				id => $_->{userId}
+			}],
+			nextWindow => 'parent'
+		}
+	} values %{ $prefs->get('accounts') || {} } ];
 
 	$cb->({ items => $items });
 }
@@ -136,28 +181,48 @@ sub getGenres {
 	my ( $client, $callback ) = @_;
 
 	getAPIHandler($client)->genres(sub {
-		my $items = [ map { {
-			name => $_->{name},
-			type => 'outline',
-			items => [ {
+		my $genres = shift;
+
+		my $items = [ map {
+			my $genrePath = $_->{path};
+			my $items = [];
+
+			push @$items, {
 				name => cstring($client, 'PLAYLISTS'),
 				type  => 'link',
 				url   => \&getGenreItems,
-				passthrough => [ { genre => $_->{path}, type => 'playlists' } ],
-			}, {
+				passthrough => [ { genre => $genrePath, type => 'playlists' } ],
+			} if $_->{hasPlaylists};
+
+			push @$items, {
+				name => cstring($client, 'ARTISTS'),
+				type  => 'link',
+				url   => \&getGenreItems,
+				passthrough => [ { genre => $genrePath, type => 'artists' } ],
+			} if $_->{hasArtists};
+
+			push @$items, {
 				name => cstring($client, 'ALBUMS'),
 				type  => 'link',
 				url   => \&getGenreItems,
-				passthrough => [ { genre => $_->{path}, type => 'albums' } ],
-			}, {
+				passthrough => [ { genre => $genrePath, type => 'albums' } ],
+			} if $_->{hasAlbums};
+
+			push @$items, {
 				name => cstring($client, 'TRACKS'),
 				type  => 'link',
 				url   => \&getGenreItems,
-				passthrough => [ { genre => $_->{path}, type => 'tracks' } ],
-			} ],
-			image => Plugins::TIDAL::API->getImageUrl($_, 'genre'),
-			passthrough => [ { genre => $_->{path} } ],
-		} } @{$_[0]} ];
+				passthrough => [ { genre => $genrePath, type => 'tracks' } ],
+			} if $_->{hasTracks};
+
+			{
+				name => $_->{name},
+				type => 'outline',
+				items => $items,
+				image => Plugins::TIDAL::API->getImageUrl($_, 'genre'),
+				passthrough => [ { genre => $_->{path} } ],
+			};
+		} @{$genres} ];
 
 		$callback->( { items => $items } );
 	});
