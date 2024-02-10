@@ -83,6 +83,35 @@ sub tracks {
 	});
 }
 
+sub artistAlbums {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get("/artists/$id/albums", sub {
+		my $artist = shift;
+		my $albums = $artist->{items} if $artist;
+		$cb->($albums || []);
+	});
+}
+
+sub mix {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get("/mixes/$id/items", sub {
+		my $mix = shift;
+
+		my $tracks = Plugins::TIDAL::API->cacheTrackMetadata([ map {
+			$_->{item}
+		} grep {
+			$_->{type} && $_->{type} eq 'track'
+		} @{$mix->{items} || []} ]) if $mix;
+
+		$cb->($tracks || []);
+	}, {
+		mixId => $id,
+		deviceType => 'BROWSER',
+	});
+}
+
 sub albumTracks {
 	my ($self, $cb, $id) = @_;
 
@@ -342,7 +371,7 @@ sub _get {
 				{
 					cache => 1,
 				}
-			)->get(sprintf('%s%s?%s&limit=%s', BURL, $url, $query, $params->{limit} || 50), %headers);
+			)->get(sprintf('%s%s?%s&limit=%s', BURL, $url, $query, $params->{limit} || 5), %headers);
 		}
 	});
 }

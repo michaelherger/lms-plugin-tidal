@@ -38,11 +38,26 @@ PLUGIN_TIDAL_ACCOUNT
 
 PLUGIN_TIDAL_FOLLOW_LINK
 	EN	The following link takes you to TIDAL for authentication. Please follow it grant Logitech Media Server access to your TIDAL account. Once you've completed sign-in come back here:
-	
+
 PLUGIN_TIDAL_QUALITY
 	EN	Quality
 	FR	Qualité
-	
+
 PLUGIN_TIDAL_QUALITY_DESC
 	EN	Streaming quality
 	FR	Qualité du streaming
+
+PLUGIN_TIDAL_ARTIST_MIX
+	CS	Mix interpretů
+	DA	Miks baseret på tilfældig kunstner
+	DE	Interpretenmix
+	EN	Artist Mix
+	ES	Mezcla de artistas
+	FI	Artistivalikoima
+	FR	Artistes aléatoires
+	IT	Raccolta di artisti
+	NL	Artiestenmix
+	NO	Miks fra artister
+	PL	Składanka z różnych wykonawców
+	RU	Микс по исполнителям
+	SV	Artistmix

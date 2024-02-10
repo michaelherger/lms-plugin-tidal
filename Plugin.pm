@@ -99,6 +99,28 @@ sub getSearches {
 	return;
 }
 
+sub getArtistAlbums {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->artistAlbums(sub {
+		my $items = _renderAlbums(@_);
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{id});
+}
+
+sub getArtistMix {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->mix(sub {
+		my $items = _renderTracks(@_);
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{id});
+}
+
 sub getAlbum {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -144,7 +166,7 @@ sub getGenres {
 sub getGenreItems {
 	my ( $client, $cb, $args, $params ) = @_;
 	getAPIHandler($client)->genreByType(sub {
-		my $items = [ map { _renderItem($_) } @{$_[0]} ];
+		my $items = [ map { _renderItem($client, $_) } @{$_[0]} ];
 
 		$cb->( {
 			items => $items
@@ -170,7 +192,7 @@ sub search {
 
 	getAPIHandler($client)->search(sub {
 		my $items = shift;
-		$items = [ map { _renderItem($_) } @$items ] if $items;
+		$items = [ map { _renderItem($client, $_) } @$items ] if $items;
 
 		$cb->( {
 			items => $items || []
@@ -180,7 +202,7 @@ sub search {
 }
 
 sub _renderItem {
-	my ($item) = @_;
+	my ($client, $item) = @_;
 
 	my $type = Plugins::TIDAL::API->typeOfItem($item);
 
@@ -191,7 +213,7 @@ sub _renderItem {
 		return _renderAlbum($item);
 	}
 	elsif ($type eq 'artist') {
-		return _renderArtist($item);
+		return _renderArtist($client, $item);
 	}
 	elsif ($type eq 'playlist') {
 		return _renderPlaylist($item);
@@ -225,7 +247,7 @@ sub _renderAlbums {
 
 	return [ map {
 		_renderAlbum($_);
-	} @{$results->{items}} ];
+	} @{$results} ];
 }
 
 sub _renderAlbum {
@@ -265,22 +287,41 @@ sub _renderTrack {
 }
 
 sub _renderArtists {
-	my $results = shift;
+	my ($client, $results) = @_;
 
 	return [ map {
-		_renderArtist($_);
+		_renderArtist($client, $_);
 	} @{$results->{items}} ];
 }
 
 sub _renderArtist {
-	my $item = shift;
+	my ($client, $item) = @_;
 
-	return {
-		name => $item->{name},
-		url => \&getArtist,
-		type => 'link',
-		image => Plugins::TIDAL::API->getImageUrl($item),
+	my $items = [{
+		name => cstring($client, 'ALBUMS'),
+		url => \&getArtistAlbums,
 		passthrough => [{ id => $item->{id} }],
+	}];
+
+	foreach (keys %{$item->{mixes} || {}}) {
+		push @$items, {
+			name => cstring($client, "PLUGIN_TIDAL_$_"),
+			url => \&getArtistMix,
+			passthrough => [{ id => $item->{mixes}->{$_} }],
+		};
+	}
+
+	return scalar @$items > 1
+	? {
+		name => $item->{name},
+		type => 'outline',
+		items => $items,
+		image => Plugins::TIDAL::API->getImageUrl($item),
+	}
+	: {
+		%{$items->[0]},
+		name => $item->{name},
+		image => Plugins::TIDAL::API->getImageUrl($item),
 	};
 }
 
