@@ -46,10 +46,10 @@ sub getCountryCode {
 }
 
 sub getImageUrl {
-	my ($class, $data) = @_;
+	my ($class, $data, $type) = @_;
 
 	if ( my $coverId = $data->{cover} || $data->{image} || $data->{squareImage} || $data->{picture} || ($data->{album} && $data->{album}->{cover}) ) {
-		my $type = $class->typeOfItem($data);
+		$type ||= $class->typeOfItem($data);
 		my $iconSize;
 
 		if ($type eq 'playlist' && $data->{squareImage}) {
