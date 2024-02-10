@@ -11,6 +11,7 @@ use Slim::Networking::SimpleAsyncHTTP;
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
+use Slim::Utils::Strings qw(string);
 
 use Plugins::TIDAL::API qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE);
 
@@ -70,7 +71,7 @@ sub search {
 sub tracks {
 	my ($self, $cb, $id) = @_;
 
-	$self->_get('/tracks' . $id, sub {
+	$self->_get("/tracks/$id", sub {
 		$cb->(@_);
 	});
 }
@@ -276,7 +277,7 @@ sub _get {
 			$error = 'NO_ACCESS_TOKEN' if $error !~ /429/;
 
 			$cb->({
-				name => cstring('Did not get a token' . $error),
+				name => string('Did not get a token' . $error),
 				type => 'text'
 			});
 		}
