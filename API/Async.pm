@@ -58,13 +58,53 @@ sub new {
 }
 
 sub search {
-	my ($self, $cb, $args, $params) = @_;
+	my ($self, $cb, $args) = @_;
 
 	$self->_get('/search' . ($args->{type} || ''), sub {
 		$cb->(@_);
 	}, {
 		query => $args->{search}
 	});
+}
+
+sub tracks {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get('/tracks' . $id, sub {
+		$cb->(@_);
+	});
+}
+
+sub genres {
+	my ($self, $cb) = @_;
+
+	$self->_get('/genres', sub {
+		$cb->(@_);
+	});
+}
+
+sub genreByType {
+	my ($self, $cb, $genre, $type) = @_;
+
+	$self->_get("/genres/$genre/$type", sub {
+		$cb->(@_);
+	});
+}
+
+sub playlist {
+	my ($self, $cb, $uuid) = @_;
+
+	$self->_get("/playlists/$uuid/items", sub {
+		$cb->(@_);
+	});
+}
+
+sub getTrackUrl {
+	my ($self, $cb, $id, $params) = @_;
+
+	$self->_get('/tracks/' . $id . '/playbackinfopostpaywall', sub {
+		$cb->(@_);
+	}, $params);
 }
 
 sub initDeviceFlow {
@@ -234,7 +274,7 @@ sub _get {
 			$error = 'NO_ACCESS_TOKEN' if $error !~ /429/;
 
 			$cb->({
-				name => string('Did not get a token' . $error),
+				name => cstring('Did not get a token' . $error),
 				type => 'text'
 			});
 		}

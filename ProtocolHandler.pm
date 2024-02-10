@@ -129,62 +129,61 @@ sub getNextTrack {
 	}
 
 
-	Plugins::TIDAL::Plugin::getAPIHandler($client)->_get("/tracks/$trackId/playbackinfopostpaywall", sub {
-			my $response = shift;
+	Plugins::TIDAL::Plugin::getAPIHandler($client)->getTrackUrl(sub {
+		my $response = shift;
 
-			# no DASH or other for now
-			if ($response->{manifestMimeType} !~ m|application/vnd.tidal.bt|) {
-				return _gotTrackError("only plays streams $response->{manifestMimeType}", $errorCb);
-			}
-
-			my $manifest = eval { from_json(decode_base64($response->{manifest})) };
-			return _gotTrackError($@, $errorCb) if $@;
-
-			my $streamUrl = $manifest->{urls}[0];
-			my ($format) = $manifest->{mimeType} =~ m|audio/(\w+)|;
-			$format =~ s/flac/flc/;
-
-			# this should not happen
-			if ($format ne $class->getFormat) {
-				$log->warn("did not get the expected format for $trackId ($format <> " . $class->getFormat() . ')');
-				$song->pluginData(format => $format);
-			}
-
-			main::INFOLOG && $log->info("got $format track at $streamUrl");
-
-			$song->streamUrl($streamUrl);
-
-			# now try to acquire the header for seeking and various details
-			Slim::Utils::Scanner::Remote::parseRemoteHeader(
-				$song->track, $streamUrl, $format,
-				sub {
-					my $cache = Slim::Utils::Cache->new;
-					my $meta = $cache->get('tidal_meta_' . $trackId);
-
-					# update what we got from parsing actual stream (we shoudl already have something)
-					$meta->{bitrate} = sprintf("%.0f" . Slim::Utils::Strings::string('KBPS'), $song->track->bitrate/1000);
-					$song->track->replay_gain($meta->{replay_gain} || 0);
-					$cache->set('tidal_meta_' . $trackId, $meta, 86400);
-
-					# we have new metadata
-					$client->currentPlaylistUpdateTime( Time::HiRes::time() );
-					Slim::Control::Request::notifyFromArray( $client, [ 'newmetadata' ] );
-
-					$successCb->();
-				},
-				sub {
-					my ($self, $error) = @_;
-					$log->warn( "could not find $format header $error" );
-					$successCb->();
-				}
-			);
-		},
-		{
-			audioquality => $prefs->get('quality'),
-			playbackmode => 'STREAM',
-			assetpresentation => 'FULL',
+		# no DASH or other for now
+		if ($response->{manifestMimeType} !~ m|application/vnd.tidal.bt|) {
+			return _gotTrackError("only plays streams $response->{manifestMimeType}", $errorCb);
 		}
-	);
+
+		my $manifest = eval { from_json(decode_base64($response->{manifest})) };
+		return _gotTrackError($@, $errorCb) if $@;
+
+		my $streamUrl = $manifest->{urls}[0];
+		my ($format) = $manifest->{mimeType} =~ m|audio/(\w+)|;
+		$format =~ s/flac/flc/;
+
+		# this should not happen
+		if ($format ne $class->getFormat) {
+			$log->warn("did not get the expected format for $trackId ($format <> " . $class->getFormat() . ')');
+			$song->pluginData(format => $format);
+		}
+
+		main::INFOLOG && $log->info("got $format track at $streamUrl");
+
+		$song->streamUrl($streamUrl);
+
+		# now try to acquire the header for seeking and various details
+		Slim::Utils::Scanner::Remote::parseRemoteHeader(
+			$song->track, $streamUrl, $format,
+			sub {
+				my $cache = Slim::Utils::Cache->new;
+				my $meta = $cache->get('tidal_meta_' . $trackId);
+
+				# update what we got from parsing actual stream (we shoudl already have something)
+				$meta->{bitrate} = sprintf("%.0f" . Slim::Utils::Strings::string('KBPS'), $song->track->bitrate/1000);
+				$song->track->replay_gain($meta->{replay_gain} || 0);
+				$cache->set('tidal_meta_' . $trackId, $meta, 86400);
+
+				# we have new metadata
+				$client->currentPlaylistUpdateTime( Time::HiRes::time() );
+				Slim::Control::Request::notifyFromArray( $client, [ 'newmetadata' ] );
+
+				$successCb->();
+			},
+			sub {
+				my ($self, $error) = @_;
+				$log->warn( "could not find $format header $error" );
+				$successCb->();
+			}
+		);
+	}, $trackId, 
+	{
+		audioquality => $prefs->get('quality'),
+		playbackmode => 'STREAM',
+		assetpresentation => 'FULL',
+	});
 
 	main::DEBUGLOG && $log->is_debug && $log->debug("Getting next track playback info for $url");
 }
@@ -233,7 +232,7 @@ sub getMetadataFor {
 
 		main::DEBUGLOG && $log->is_debug && $log->debug("adding metadata query for $trackId");
 
-		Plugins::TIDAL::Plugin::getAPIHandler($client)->_get("/tracks/$trackId/", sub {
+		Plugins::TIDAL::Plugin::getAPIHandler($client)->tracks(sub {
 			@pendingMeta = grep { $_->{id} != $trackId } @pendingMeta;
 			return unless $_[0];
 
@@ -243,7 +242,7 @@ sub getMetadataFor {
 			# Update the playlist time so the web will refresh, etc
 			$client->currentPlaylistUpdateTime( Time::HiRes::time() );
 			Slim::Control::Request::notifyFromArray( $client, [ 'newmetadata' ] );
-		} );
+		}, $trackId );
 	}
 
 	my $icon = $class->getIcon();
