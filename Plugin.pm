@@ -81,13 +81,42 @@ sub handleFeed {
 	},{
 		name  => cstring($client, 'SEARCH'),
 		image => 'html/images/search.png',
-		type => 'link',
-		url  => \&getSearches,
+		type => 'outline',
+		items => [{
+			name => cstring($client, 'EVERYTHING'),
+			type  => 'search',
+			url   => \&search,
+		},{
+			name => cstring($client, 'PLAYLISTS'),
+			type  => 'search',
+			url   => \&search,
+			passthrough => [ { type => 'playlists'	} ],
+		},{
+			name => cstring($client, 'ARTISTS'),
+			type  => 'search',
+			url   => \&search,
+			passthrough => [ { type => 'artists' } ],
+		},{
+			name => cstring($client, 'ALBUMS'),
+			type  => 'search',
+			url   => \&search,
+			passthrough => [ { type => 'albums' } ],
+		},{
+			name => cstring($client, 'TRACKS'),
+			type  => 'search',
+			url   => \&search,
+			passthrough => [ { type => 'tracks' } ],
+		}]
 	},{
 		name  => cstring($client, 'GENRES'),
 		image => 'html/images/genres.png',
 		type => 'link',
 		url  => \&getGenres,
+	},{
+		name  => cstring($client, 'PLUGIN_TIDAL_MOODS'),
+		image => __PACKAGE__->_pluginDataFor('icon'),
+		type => 'link',
+		url  => \&getMoods,
 	} ];
 
 	# TODO - more menu items...
@@ -127,40 +156,6 @@ sub selectAccount {
 	} values %{ $prefs->get('accounts') || {} } ];
 
 	$cb->({ items => $items });
-}
-
-sub getSearches {
-	my ( $client, $callback, $args ) = @_;
-	my $menu = [];
-
-	$menu = [ {
-		name => cstring($client, 'EVERYTHING'),
-		type  => 'search',
-		url   => \&search,
-	}, {
-		name => cstring($client, 'PLAYLISTS'),
-		type  => 'search',
-		url   => \&search,
-		passthrough => [ { type => 'playlists'	} ],
-	}, {
-		name => cstring($client, 'ARTISTS'),
-		type  => 'search',
-		url   => \&search,
-		passthrough => [ { type => 'artists' } ],
-	}, {
-		name => cstring($client, 'ALBUMS'),
-		type  => 'search',
-		url   => \&search,
-		passthrough => [ { type => 'albums' } ],
-	}, {
-		name => cstring($client, 'TRACKS'),
-		type  => 'search',
-		url   => \&search,
-		passthrough => [ { type => 'tracks' } ],
-	} ];
-
-	$callback->( { items => $menu } );
-	return;
 }
 
 sub getFavorites {
@@ -271,6 +266,34 @@ sub getGenreItems {
 		} );
 	}, $params->{genre}, $params->{type} );
 }
+
+sub getMoods {
+	my ( $client, $callback, $args, $params ) = @_;
+	getAPIHandler($client)->moods(sub {
+		my $items = [ map {
+			{
+				name => $_->{name},
+				type => 'link',
+				url => \&getMoodPlaylists,
+				image => Plugins::TIDAL::API->getImageUrl($_, 'mood'),
+				passthrough => [ { mood => $_->{path} } ],
+			};
+		} @{$_[0]} ];
+
+		$callback->( { items => $items } );
+	} );
+}
+
+sub getMoodPlaylists {
+	my ( $client, $cb, $args, $params ) = @_;
+	getAPIHandler($client)->moodPlaylists(sub {
+		my $items = [ map { _renderPlaylist($_) } @{$_[0]->{items}} ];
+
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{mood} );
+}	
 
 sub getPlaylist {
 	my ( $client, $cb, $args, $params ) = @_;
