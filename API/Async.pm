@@ -88,9 +88,18 @@ sub artistAlbums {
 
 	$self->_get("/artists/$id/albums", sub {
 		my $artist = shift;
-		my $albums = $artist->{items} if $artist;
+		my $albums = _filterAlbums($artist->{items}) if $artist;
 		$cb->($albums || []);
 	});
+}
+
+sub _filterAlbums {
+	my ($albums) = shift || return;
+
+	# TODO - be a bit smarter about removing duplicates
+	return [ grep {
+		$_->{audioQuality} !~ /^(?:LOW|HI_RES)$/
+	} @$albums ];
 }
 
 sub mix {
@@ -340,6 +349,50 @@ sub refreshToken {
 		$cb->();
 	}
 }
+
+my $URL_REGEX = qr{^https://(?:\w+\.)?tidal.com/(?:browse/)?(track|playlist|album|artist|mix)/([a-z\d-]+)}i;
+my $URI_REGEX = qr{^wimp://(playlist|album|artist|mix|):?([0-9a-z-]+)}i;
+sub getIdsForURL {
+	my ( $self, $c ) = @_;
+
+	my $uri = $c->req->params->{url};
+
+	my ($type, $id) = $uri =~ $URL_REGEX;
+
+	if ( !($type && $id) ) {
+		($type, $id) = $uri =~ $URI_REGEX;
+	}
+
+	$type ||= 'track';
+	my $result;
+	my $tracks;
+
+	if ($type eq 'playlist') {
+		$result = $c->stash->{w}->getPlaylistTracks( $id ) || [];
+	}
+	elsif ($type eq 'album') {
+		$result = $c->stash->{w}->getAlbumTracks( $id ) || [];
+	}
+	elsif ($type eq 'artist') {
+		$result = $c->stash->{w}->getArtistTracks( $id ) || [];
+	}
+	elsif ($type eq 'mix') {
+		$result = $c->stash->{w}->getMix( $id ) || [];
+	}
+	elsif ($id) {
+		if (my $track = $c->stash->{w}->getTrack( $id )) {
+			$tracks = [ 'wimp://' . $track->{id} . $c->forward( '/api/wimp/v1/opml/getExt', [ $track ] ) ]
+		}
+	}
+
+	$tracks ||= [ grep /.+/, map {
+		$_->{play};
+	} @{$c->forward( '/api/wimp/v1/opml/renderItemList', [ $result || [] ])} ];
+
+	$c->forward( '/api/set_cache', [ 0 ] );
+	$c->res->body( to_json( \@$tracks ) );
+}
+
 
 sub _get {
 	my ( $self, $url, $cb, $params ) = @_;
