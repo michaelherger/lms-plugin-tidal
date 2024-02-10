@@ -1,0 +1,302 @@
+package Plugins::TIDAL::ProtocolHandler;
+
+use strict;
+
+use JSON::XS::VersionOneAndTwo;
+use URI::Escape qw(uri_escape_utf8);
+use Scalar::Util qw(blessed);
+use MIME::Base64 qw(encode_base64 decode_base64);
+
+use Slim::Networking::SqueezeNetwork;
+use Slim::Utils::Log;
+use Slim::Utils::Misc;
+use Slim::Utils::Prefs;
+use Slim::Utils::Timers;
+
+use base qw(Slim::Player::Protocols::HTTPS);
+
+my $prefs = preferences('plugin.tidal');
+my $serverPrefs = preferences('server');
+my $log = logger('plugin.tidal');
+
+my $URL_REGEX = qr{^https://(?:\w+\.)?tidal.com/(?:browse/)?(track|playlist|album|artist|mix)/([a-z\d-]+)}i;
+Slim::Player::ProtocolHandlers->registerURLHandler($URL_REGEX, __PACKAGE__);
+
+# many method do not need override like isRemote, shouldLoop ...
+sub canSkip { 1 }	# where is this called?
+sub canSeek { 1 }
+
+sub getFormatForURL {
+	return getFormat();
+}
+
+sub formatOverride {
+	my ($class, $song) = @_;
+	my $format = $song->pluginData('format') || $class->getFormat;
+	return $format =~ s/mp4/aac/r;
+}
+
+# some TIDAL streams are compressed in a way which causes stutter on ip3k based players
+sub forceTranscode {
+	my ($self, $client, $format) = @_;
+	return $format eq 'flc' && $client->model =~ /squeezebox|boom|transporter|receiver/;
+}
+
+# To support remote streaming (synced players), we need to subclass Protocols::HTTP
+sub new {
+	my $class  = shift;
+	my $args   = shift;
+
+	my $client = $args->{client};
+
+	my $song      = $args->{song};
+	my $streamUrl = $song->streamUrl() || return;
+
+	main::DEBUGLOG && $log->debug( 'Remote streaming TIDAL track: ' . $streamUrl );
+
+	my $sock = $class->SUPER::new( {
+		url     => $streamUrl,
+		song    => $args->{song},
+		client  => $client,
+	} ) || return;
+
+	return $sock;
+}
+
+# Avoid scanning
+sub scanUrl {
+	my ( $class, $url, $args ) = @_;
+	$args->{cb}->( $args->{song}->currentTrack() );
+}
+
+# Source for AudioScrobbler
+sub audioScrobblerSource {
+	my ( $class, $client, $url ) = @_;
+
+	# P = Chosen by the user
+	return 'P';
+}
+
+=comment
+sub explodePlaylist {
+	my ( $class, $client, $url, $cb ) = @_;
+
+	if ( $url =~ $URL_REGEX || $url =~ m{^wimp://(playlist|album|):?([0-9a-z-]+)}i ) {
+		Slim::Networking::SqueezeNetwork->new(
+			sub {
+				my $http = shift;
+				my $opml = eval { from_json( $http->content ) };
+
+				return $cb->($opml) if $opml && ref $opml && ref $opml eq 'ARRAY';
+
+				$cb->([]);
+			},
+			sub {
+				$cb->([])
+			},
+			{
+				client => $client
+			}
+		)->get(
+			Slim::Networking::SqueezeNetwork->url(
+				"/api/wimp/v1/playback/getIdsForURL?url=" . uri_escape_utf8($url),
+			)
+		);
+	}
+	else {
+		$cb->([]);
+	}
+}
+=cut
+
+sub _gotTrackError {
+	my ( $error, $errorCb ) = @_;
+	main::DEBUGLOG && $log->debug("Error during getTrackInfo: $error");
+	$errorCb->($error);
+}
+
+sub getNextTrack {
+	my ( $class, $song, $successCb, $errorCb ) = @_;
+	my $client = $song->master();
+	my $url = $song->track()->url;
+
+	# Get track URL for the next track
+	my $trackId = _getId($url);
+
+	if (!$trackId) {
+		$log->error("can't get trackId");
+		return;
+	}
+
+
+	Plugins::TIDAL::API::Async->_get("/tracks/$trackId/playbackinfopostpaywall", sub {
+			my $response = shift;
+
+			# no DASH or other for now
+			if ($response->{manifestMimeType} !~ m|application/vnd.tidal.bt|) {
+				return _gotTrackError("only plays streams $response->{manifestMimeType}", $errorCb);
+			}
+
+			my $manifest = eval { from_json(decode_base64($response->{manifest})) };
+			return _gotTrackError($@, $errorCb) if $@;
+
+			my $streamUrl = $manifest->{urls}[0];
+			my ($format) = $manifest->{mimeType} =~ m|audio/(\w+)|;
+			$format =~ s/flac/flc/;
+
+			# this should not happen
+			if ($format ne $class->getFormat) {
+				$log->warn("did not get the expected format for $trackId ($format <> " . $class->getFormat() . ')');
+				$song->pluginData(format => $format);
+			}
+
+			main::INFOLOG && $log->info("got $format track at $streamUrl");
+
+			$song->streamUrl($streamUrl);
+
+			# now try to acquire the header for seeking and various details
+			Slim::Utils::Scanner::Remote::parseRemoteHeader(
+				$song->track, $streamUrl, $format,
+				sub {
+					my $cache = Slim::Utils::Cache->new;
+					my $meta = $cache->get('tidal_meta_' . $trackId);
+
+					# update what we got from parsing actual stream (we shoudl already have something)
+					$meta->{bitrate} = sprintf("%.0f" . Slim::Utils::Strings::string('KBPS'), $song->track->bitrate/1000);
+					$song->track->replay_gain($meta->{replay_gain} || 0);
+					$cache->set('tidal_meta_' . $trackId, $meta, 86400);
+
+					# we have new metadata
+					$client->currentPlaylistUpdateTime( Time::HiRes::time() );
+					Slim::Control::Request::notifyFromArray( $client, [ 'newmetadata' ] );
+
+					$successCb->();
+				},
+				sub {
+					my ($self, $error) = @_;
+					$log->warn( "could not find $format header $error" );
+					$successCb->();
+				}
+			);
+		},
+		{
+			audioquality => $prefs->get('quality'),
+			playbackmode => 'STREAM',
+			assetpresentation => 'FULL',
+		}
+	);
+
+	main::DEBUGLOG && $log->is_debug && $log->debug("Getting next track playback info for $url");
+}
+
+=comment
+# URL used for CLI trackinfo queries
+sub trackInfoURL {
+	my ( $class, $client, $url ) = @_;
+
+	my ($trackId) = _getStreamParams( $url );
+
+	# SN URL to fetch track info menu
+	my $trackInfoURL = Slim::Networking::SqueezeNetwork->url(
+		'/api/wimp/v1/opml/trackinfo?trackId=' . $trackId
+	);
+
+	return $trackInfoURL;
+}
+=cut
+
+my @pendingMeta = ();
+
+sub getMetadataFor {
+	my ( $class, $client, $url ) = @_;
+	return {} unless $url;
+
+	my $cache = Slim::Utils::Cache->new;
+	my $trackId = _getId($url);
+
+	# if metadata is in cache (not just bitrate), we have all we need
+	my $meta = $cache->get( 'tidal_meta_' . ($trackId || '') );
+	return $meta if $meta && $meta->{type} eq $class->getFormat() && exists $meta->{duration};
+
+	my $now = time();
+
+	# first cleanup old requests in case some got lost
+	@pendingMeta = grep { $_->{time} < $now + 60 } @pendingMeta;
+
+	# only proceed if our request is not pending and we have less than 10 in parallel
+	if ( !(grep { $_->{id} == $trackId } @pendingMeta) && scalar(@pendingMeta) < 10 ) {
+
+		push @pendingMeta, {
+			id => $trackId,
+			time => $now,
+		};
+
+		main::DEBUGLOG && $log->is_debug && $log->debug("adding metadata query for $trackId");
+
+		Plugins::TIDAL::API::Async->_get("/tracks/$trackId/", sub {
+			@pendingMeta = grep { $_->{id} != $trackId } @pendingMeta;
+			return unless $_[0];
+
+			my $meta = $class->cacheMetadata($_[0]);
+			main::DEBUGLOG && $log->is_debug && $log->debug("found metadata for $trackId", Data::Dump::dump($meta));
+
+			# Update the playlist time so the web will refresh, etc
+			$client->currentPlaylistUpdateTime( Time::HiRes::time() );
+			Slim::Control::Request::notifyFromArray( $client, [ 'newmetadata' ] );
+		} );
+	}
+
+	my $icon = $class->getIcon();
+
+	return $meta || {
+		bitrate   => 'N/A',
+		type      => getFormat(),
+		icon      => $icon,
+		cover     => $icon,
+	};
+}
+
+sub cacheMetadata {
+	my ($class, $entry) = @_;
+	my $cache = Slim::Utils::Cache->new;
+	my $oldMeta = $cache->get( 'tidal_meta_' . $entry->{id}) || {};
+	my $icon = Plugins::TIDAL::API->getImageUrl($entry) || $class->getIcon;
+
+	# consolidate metadata in case parsing of stream came first (huh?)
+	my $meta = {
+		%$oldMeta,
+		title => $entry->{title},
+		artist => $entry->{artist}->{name},
+		album => $entry->{album}->{title},
+		duration => $entry->{duration} * 1000,
+		icon => $icon,
+		cover => $icon,
+		replay_gain => $entry->{replayGain} || 0,
+		info_link => 'plugins/tidal/trackinfo.html',
+		type => getFormat(),
+	};
+
+	$cache->set( 'tidal_meta_' . $entry->{id}, $meta, 86400);
+	return $meta;
+}
+
+sub getIcon {
+	my ( $class, $url ) = @_;
+	return Plugins::TIDAL::Plugin->_pluginDataFor('icon');
+}
+
+sub _getId {
+	my ($id) = $_[0] =~ m|tidal://(\d+)|;
+	return $id;
+}
+
+sub getFormat {
+	my %quality = (
+		LOW => 'mp4',
+		HIGH => 'mp4',
+		LOSSLESS => 'flc',
+	);
+	return $quality{$prefs->get('quality')};
+}
+
+1;

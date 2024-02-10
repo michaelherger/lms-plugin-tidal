@@ -29,5 +29,12 @@
 		<input name="addAccount" type="submit" value="[% "PLUGIN_TIDAL_ADD_ACCOUNT" | string %]" class="stdclick" />
 	[% END %]
 
+	[% WRAPPER setting title="PLUGIN_TIDAL_QUALITY" desc="PLUGIN_TIDAL_QUALIT_DESC" %]
+		<select class="stdedit" name="pref_quality" id="quality">
+		[% FOREACH entry IN [ ['AAC 96Kbps','LOW'], ['AAC 320Kbps', 'HIGH'], ['FLAC','LOSSLESS'] ] %]
+			<option [% IF entry.1 == prefs.pref_quality %]selected[% END %] value="[% entry.1 %]">[% entry.0 %]</option>
+		[% END %]
+		</select>
+	[% END %]
 
 [% PROCESS settings/footer.html %]
