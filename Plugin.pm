@@ -72,8 +72,7 @@ sub handleFeed {
 
 	# TODO - more menu items...
 
-
-	if ($client && scalar @{ keys %{$prefs->get('accounts')} || {} } > 1) {
+	if ($client && scalar keys %{$prefs->get('accounts') || {}} > 1) {
 		push @$items, {
 			name => cstring($client, 'PLUGIN_TIDAL_SELECT_ACCOUNT'),
 			image => __PACKAGE__->_pluginDataFor('icon'),
