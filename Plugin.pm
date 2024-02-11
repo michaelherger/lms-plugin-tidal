@@ -59,24 +59,34 @@ sub handleFeed {
 	}
 
 	my $items = [{
+		name => cstring($client, 'PLUGIN_TIDAL_FEATURES'),
+		image => __PACKAGE__->_pluginDataFor('icon'),
+		type => 'link',
+		url => \&getFeatured,
+	},{
 		name => cstring($client, 'FAVORITES'),
 		image => 'html/images/favorites.png',
 		type => 'outline',
 		items => [{
-			name => cstring($client, 'ARTISTS'),
+			name => cstring($client, 'PLAYLISTS'),
 			type => 'link',
 			url => \&getFavorites,
-			passthrough => [{ type => 'artists' }],
+			passthrough => [{ type => 'playlists' }],
 		},{
 			name => cstring($client, 'ALBUMS'),
 			type => 'link',
 			url => \&getFavorites,
 			passthrough => [{ type => 'albums' }],
 		},{
-			name => cstring($client, 'PLAYLISTS'),
+			name => cstring($client, 'ARTISTS'),
 			type => 'link',
 			url => \&getFavorites,
-			passthrough => [{ type => 'playlists' }],
+			passthrough => [{ type => 'artists' }],
+		},{
+			name => cstring($client, 'TRACKS'),
+			type => 'link',
+			url => \&getFavorites,
+			passthrough => [{ type => 'tracks' }],
 		}]
 	},{
 		name  => cstring($client, 'SEARCH'),
@@ -164,7 +174,7 @@ sub getFavorites {
 	getAPIHandler($client)->getFavorites(sub {
 		my $items = shift;
 
-		$items = [ map { _renderItem($client, $_, 1) } @$items ] if $items;
+		$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ] if $items;
 
 		$cb->( {
 			items => $items
@@ -209,48 +219,7 @@ sub getGenres {
 	my ( $client, $callback ) = @_;
 
 	getAPIHandler($client)->genres(sub {
-		my $genres = shift;
-
-		my $items = [ map {
-			my $genrePath = $_->{path};
-			my $items = [];
-
-			push @$items, {
-				name => cstring($client, 'PLAYLISTS'),
-				type  => 'link',
-				url   => \&getGenreItems,
-				passthrough => [ { genre => $genrePath, type => 'playlists' } ],
-			} if $_->{hasPlaylists};
-
-			push @$items, {
-				name => cstring($client, 'ARTISTS'),
-				type  => 'link',
-				url   => \&getGenreItems,
-				passthrough => [ { genre => $genrePath, type => 'artists' } ],
-			} if $_->{hasArtists};
-
-			push @$items, {
-				name => cstring($client, 'ALBUMS'),
-				type  => 'link',
-				url   => \&getGenreItems,
-				passthrough => [ { genre => $genrePath, type => 'albums' } ],
-			} if $_->{hasAlbums};
-
-			push @$items, {
-				name => cstring($client, 'TRACKS'),
-				type  => 'link',
-				url   => \&getGenreItems,
-				passthrough => [ { genre => $genrePath, type => 'tracks' } ],
-			} if $_->{hasTracks};
-
-			{
-				name => $_->{name},
-				type => 'outline',
-				items => $items,
-				image => Plugins::TIDAL::API->getImageUrl($_, 'genre'),
-				passthrough => [ { genre => $_->{path} } ],
-			};
-		} @{$genres} ];
+		my $items = [ map { _renderItem($client, $_, { handler => \&getGenreItems }) } @{$_[0]} ];
 
 		$callback->( { items => $items } );
 	});
@@ -259,12 +228,39 @@ sub getGenres {
 sub getGenreItems {
 	my ( $client, $cb, $args, $params ) = @_;
 	getAPIHandler($client)->genreByType(sub {
-		my $items = [ map { _renderItem($client, $_, 1) } @{$_[0]} ];
+		my $items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 } ) } @{$_[0]} ];
 
 		$cb->( {
 			items => $items
 		} );
-	}, $params->{genre}, $params->{type} );
+	}, $params->{path}, $params->{type} );
+}
+
+sub getFeatured {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->featured(sub {
+		my $items = [ map { _renderItem($client, $_, { handler => \&getFeaturedItem }) } @{$_[0]} ];
+
+		$cb->( {
+			items => $items
+		} );
+	});
+}
+
+sub getFeaturedItem {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->featuredItem(sub {
+		my $items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @{$_[0]} ];
+
+		$cb->( {
+			items => $items
+		} );
+	},{
+		id => $params->{path},
+		type => $params->{type},
+	});
 }
 
 sub getMoods {
@@ -323,21 +319,24 @@ sub search {
 }
 
 sub _renderItem {
-	my ($client, $item, $addArtistToTitle) = @_;
+	my ($client, $item, $args) = @_;
 
 	my $type = Plugins::TIDAL::API->typeOfItem($item);
 
 	if ($type eq 'track') {
-		return _renderTrack($item, $addArtistToTitle);
+		return _renderTrack($item, $args->{addArtistToTitle});
 	}
 	elsif ($type eq 'album') {
-		return _renderAlbum($item, $addArtistToTitle);
+		return _renderAlbum($item, $args->{addArtistToTitle});
 	}
 	elsif ($type eq 'artist') {
 		return _renderArtist($client, $item);
 	}
 	elsif ($type eq 'playlist') {
 		return _renderPlaylist($item);
+	}
+	elsif ($type eq 'category') {
+		return _renderCategory($client, $item, $args->{handler});
 	}
 }
 
@@ -449,6 +448,49 @@ sub _renderArtist {
 		%{$items->[0]},
 		name => $item->{name},
 		image => Plugins::TIDAL::API->getImageUrl($item),
+	};
+}
+
+sub _renderCategory {
+	my ($client, $item, $renderer) = @_;
+
+	my $path = $item->{path};
+	my $items = [];
+
+	push @$items, {
+		name => cstring($client, 'PLAYLISTS'),
+		type  => 'link',
+		url   => $renderer,
+		passthrough => [ { path => $path, type => 'playlists' } ],
+	} if $item->{hasPlaylists};
+
+	push @$items, {
+		name => cstring($client, 'ARTISTS'),
+		type  => 'link',
+		url   => $renderer,
+		passthrough => [ { path => $path, type => 'artists' } ],
+	} if $item->{hasArtists};
+
+	push @$items, {
+		name => cstring($client, 'ALBUMS'),
+		type  => 'link',
+		url   => $renderer,
+		passthrough => [ { path => $path, type => 'albums' } ],
+	} if $item->{hasAlbums};
+
+	push @$items, {
+		name => cstring($client, 'TRACKS'),
+		type  => 'link',
+		url   => $renderer,
+		passthrough => [ { path => $path, type => 'tracks' } ],
+	} if $item->{hasTracks};
+
+	return {
+		name => $item->{name},
+		type => 'outline',
+		items => $items,
+		image => Plugins::TIDAL::API->getImageUrl($item, 'genre'),
+		passthrough => [ { path => $item->{path} } ],
 	};
 }
 

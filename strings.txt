@@ -80,7 +80,17 @@ PLUGIN_TIDAL_ARTIST_MIX
 	PL	Składanka z różnych wykonawców
 	RU	Микс по исполнителям
 	SV	Artistmix
-	
+
 PLUGIN_TIDAL_MOODS
+	DE	Stimmungen
 	EN	Moods
 	FR	Ambiances
+
+PLUGIN_TIDAL_FEATURES
+	DA	Udvalgte
+	EN	Featured
+	ES	Destacados
+	FR	Sélection
+	NO	Utvalgte
+	SV	Utvalt
+	PL	Polecane

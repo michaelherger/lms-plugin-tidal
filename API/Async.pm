@@ -106,6 +106,28 @@ sub _filterAlbums {
 	} @$albums ];
 }
 
+sub featured {
+	my ($self, $cb) = @_;
+	$self->_get("/featured", $cb);
+}
+
+sub featuredItem {
+	my ($self, $cb, $args) = @_;
+
+	my $id = $args->{id};
+	my $type = $args->{type};
+
+	return $cb->() unless $id && $type;
+
+	$self->_get("/featured/$id/$type", sub {
+		my $items = shift;
+		my $tracks = $items->{items} if $items;
+		$tracks = Plugins::TIDAL::API->cacheTrackMetadata($tracks) if $tracks && $type eq 'tracks';
+
+		$cb->($tracks || []);
+	});
+}
+
 sub mix {
 	my ($self, $cb, $id) = @_;
 
@@ -140,10 +162,7 @@ sub albumTracks {
 
 sub genres {
 	my ($self, $cb) = @_;
-
-	$self->_get('/genres', sub {
-		$cb->(@_);
-	});
+	$self->_get('/genres', $cb);
 }
 
 sub genreByType {
@@ -159,10 +178,7 @@ sub genreByType {
 
 sub moods {
 	my ($self, $cb) = @_;
-
-	$self->_get('/moods', sub {
-		$cb->(@_);
-	});
+	$self->_get('/moods', $cb);
 }
 
 sub moodPlaylists {
