@@ -160,17 +160,10 @@ sub getNextTrack {
 		Slim::Utils::Scanner::Remote::parseRemoteHeader(
 			$song->track, $streamUrl, $format,
 			sub {
-				my $meta = $cache->get('tidal_meta_' . $trackId);
-
-				# update what we got from parsing actual stream (we shoudl already have something)
-				$meta->{bitrate} = sprintf("%.0f" . Slim::Utils::Strings::string('KBPS'), $song->track->bitrate/1000);
-				$song->track->replay_gain($meta->{replay_gain} || 0);
-				$cache->set('tidal_meta_' . $trackId, $meta, 86400);
-
-				# we have new metadata
+				# update what we got from parsing actual stream and update metadata
+				$song->pluginData('bitrate', sprintf("%.0f" . Slim::Utils::Strings::string('KBPS'), $song->track->bitrate/1000));
 				$client->currentPlaylistUpdateTime( Time::HiRes::time() );
 				Slim::Control::Request::notifyFromArray( $client, [ 'newmetadata' ] );
-
 				$successCb->();
 			},
 			sub {
@@ -212,10 +205,16 @@ sub getMetadataFor {
 	return {} unless $url;
 
 	my $trackId = _getId($url);
-
-	# if metadata is in cache, we have all we need
 	my $meta = $cache->get( 'tidal_meta_' . ($trackId || '') );
-	return $meta if $meta && exists $meta->{duration};
+	
+	# if metadata is in cache, we just need to add bitrate 
+	if ($meta) {
+		my $song = $client->playingSong();
+		if ($song && ($song->track->url eq $url || $song->currentTrack->url eq $url)) {
+			$meta->{bitrate} = $song->pluginData('bitrate') || 'n/a';
+		}
+		return $meta;
+	}
 
 	my $now = time();
 

@@ -152,6 +152,22 @@ sub genreByType {
 	});
 }
 
+sub moods {
+	my ($self, $cb) = @_;
+
+	$self->_get('/moods', sub {
+		$cb->(@_);
+	});
+}
+
+sub moodPlaylists {
+	my ($self, $cb, $mood) = @_;
+
+	$self->_get("/moods/$mood/playlists", sub {
+		$cb->(@_);
+	});
+}
+
 sub playlist {
 	my ($self, $cb, $uuid) = @_;
 
