@@ -118,6 +118,12 @@ sub handleFeed {
 			passthrough => [ { type => 'tracks' } ],
 		}]
 	},{
+		name => cstring($client, 'PLUGIN_TIDAL_MY_MIX'),
+		image => 'plugins/TIDAL/html/mix.png',
+		type => 'playlist',
+		url => \&getMix,
+		passthrough => [{ id => 'daily' }],
+	},{
 		name  => cstring($client, 'GENRES'),
 		image => 'html/images/genres.png',
 		type => 'link',
@@ -193,7 +199,7 @@ sub getArtistAlbums {
 	}, $params->{id});
 }
 
-sub getArtistMix {
+sub getMix {
 	my ( $client, $cb, $args, $params ) = @_;
 
 	getAPIHandler($client)->mix(sub {
@@ -430,9 +436,11 @@ sub _renderArtist {
 	}];
 
 	foreach (keys %{$item->{mixes} || {}}) {
+		next unless /^(?:TRACK|ARTIST)_MIX/;
 		push @$items, {
 			name => cstring($client, "PLUGIN_TIDAL_$_"),
-			url => \&getArtistMix,
+			type => 'playlist',
+			url => \&getMix,
 			passthrough => [{ id => $item->{mixes}->{$_} }],
 		};
 	}

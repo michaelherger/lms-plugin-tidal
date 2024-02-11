@@ -66,6 +66,10 @@ PLUGIN_TIDAL_QUALITY_DESC
 	EN	Streaming quality
 	FR	Qualité du streaming
 
+PLUGIN_TIDAL_MY_MIX
+	DE	Mein Mix
+	EN	My Mix
+
 PLUGIN_TIDAL_ARTIST_MIX
 	CS	Mix interpretů
 	DA	Miks baseret på tilfældig kunstner
@@ -80,6 +84,21 @@ PLUGIN_TIDAL_ARTIST_MIX
 	PL	Składanka z różnych wykonawców
 	RU	Микс по исполнителям
 	SV	Artistmix
+
+PLUGIN_TIDAL_TRACK_MIX
+	CS	Mix skladeb
+	DA	Miks baseret på tilfældige numre
+	DE	Titelmix
+	EN	Song Mix
+	ES	Mezcla de canciones
+	FI	Kappalevalikoima
+	FR	Morceaux aléatoires
+	IT	Raccolta di brani
+	NL	Nummermix
+	NO	Sangmiks
+	PL	Składanka utworów
+	RU	Микс по песням
+	SV	Låtmix
 
 PLUGIN_TIDAL_MOODS
 	DE	Stimmungen

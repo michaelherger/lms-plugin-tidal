@@ -131,8 +131,12 @@ sub featuredItem {
 sub mix {
 	my ($self, $cb, $id) = @_;
 
-	$self->_get("/mixes/$id/items", sub {
+	my $path = $id eq 'daily' ? 'track' : 'items';
+
+	$self->_get("/mixes/$id/$path", sub {
 		my $mix = shift;
+
+		$mix = { items => $mix } if ref $mix eq 'ARRAY';
 
 		my $tracks = Plugins::TIDAL::API->cacheTrackMetadata([ map {
 			$_->{item}
@@ -142,8 +146,6 @@ sub mix {
 
 		$cb->($tracks || []);
 	}, {
-		mixId => $id,
-		deviceType => 'BROWSER',
 		limit => MAX_LIMIT,
 	});
 }
