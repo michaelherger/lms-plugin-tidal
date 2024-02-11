@@ -257,16 +257,8 @@ sub _delayedPollDeviceAuth {
 					Slim::Utils::Timers::setTimer($deviceCode, time() + ($args->{interval} || 2), \&_delayedPollDeviceAuth, $args);
 					return;
 				}
-				elsif ($result->{user} && $result->{user_id}) {
-					my $accounts = $prefs->get('accounts');
-
-					my $userId = $result->{user_id};
-					# have token expire a little early
-					$cache->set("tidal_at_$userId", $result->{access_token}, $result->{expires_in} - 300);
-
-					$result->{user}->{refreshToken} = $result->{refresh_token};
-					$accounts->{$userId} = $result->{user};
-					$prefs->set('accounts', $accounts);
+				else {
+					_storeTokens($result)
 				}
 
 				delete $deviceCodes{$deviceCode};
@@ -360,24 +352,42 @@ sub getToken {
 sub refreshToken {
 	my ( $self, $cb ) = @_;
 
-	my $accounts = $prefs->client($self->client)->get('accounts') || {};
+	my $accounts = $prefs->get('accounts') || {};
 	my $profile  = $accounts->{$self->userId};
 
 	if ( $profile && (my $refreshToken = $profile->{refreshToken}) ) {
 		__PACKAGE__->_authCall(TOKEN_PATH, sub {
-			warn Data::Dump::dump(@_);
-			# TODO - store tokens etc.
-			$cb->();
+			$cb->(_storeTokens(@_));
 		},{
 			grant_type => 'refresh_token',
 			refresh_token => $refreshToken,
 		});
 	}
 	else {
-		# TODO warning
+		$log->error('Did find neither access nor refresh token. Please re-authenticate.');
+		# TODO expose warning on client
 		$cb->();
 	}
 }
+
+sub _storeTokens {
+	my ($result) = @_;
+
+	if ($result->{user} && $result->{user_id} && $result->{access_token}) {
+		my $accounts = $prefs->get('accounts');
+
+		my $userId = $result->{user_id};
+		# have token expire a little early
+		$cache->set("tidal_at_$userId", $result->{access_token}, $result->{expires_in} - 300);
+
+		$result->{user}->{refreshToken} = $result->{refresh_token};
+		$accounts->{$userId} = $result->{user};
+		$prefs->set('accounts', $accounts);
+	}
+
+	return $result->{access_token};
+}
+
 
 my $URL_REGEX = qr{^https://(?:\w+\.)?tidal.com/(?:browse/)?(track|playlist|album|artist|mix)/([a-z\d-]+)}i;
 my $URI_REGEX = qr{^wimp://(playlist|album|artist|mix|):?([0-9a-z-]+)}i;
