@@ -3,9 +3,11 @@ package Plugins::TIDAL::API::Async;
 use strict;
 use base qw(Slim::Utils::Accessor);
 
+use Async::Util;
 use Data::URIEncode qw(complex_to_query);
 use MIME::Base64 qw(encode_base64url encode_base64);
 use JSON::XS::VersionOneAndTwo;
+use List::Util qw(min);
 
 use Slim::Networking::SimpleAsyncHTTP;
 use Slim::Utils::Cache;
@@ -13,7 +15,7 @@ use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(string);
 
-use Plugins::TIDAL::API qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE);
+use Plugins::TIDAL::API qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL USER_CONTENT_TTL);
 
 use constant TOKEN_PATH => '/v1/oauth2/token';
 
@@ -90,6 +92,8 @@ sub artistAlbums {
 		my $artist = shift;
 		my $albums = _filterAlbums($artist->{items}) if $artist;
 		$cb->($albums || []);
+	},{
+		limit => MAX_LIMIT,
 	});
 }
 
@@ -118,6 +122,7 @@ sub mix {
 	}, {
 		mixId => $id,
 		deviceType => 'BROWSER',
+		limit => MAX_LIMIT,
 	});
 }
 
@@ -165,6 +170,8 @@ sub moodPlaylists {
 
 	$self->_get("/moods/$mood/playlists", sub {
 		$cb->(@_);
+	},{
+		limit => MAX_LIMIT,
 	});
 }
 
@@ -181,6 +188,8 @@ sub playlist {
 		} @{$result->{items} || []} ]) if $result;
 
 		$cb->($items || []);
+	},{
+		limit => MAX_LIMIT,
 	});
 }
 
@@ -198,12 +207,16 @@ sub getFavorites {
 		$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $items && $type eq 'tracks';
 
 		$cb->($items);
+	},{
+		_ttl => USER_CONTENT_TTL,
+		limit => MAX_LIMIT,
 	});
 }
 
-
 sub getTrackUrl {
 	my ($self, $cb, $id, $params) = @_;
+
+	$params->{_noCache} = 1;
 
 	$self->_get('/tracks/' . $id . '/playbackinfopostpaywall', sub {
 		$cb->(@_);
@@ -413,8 +426,6 @@ sub getIdsForURL {
 sub _get {
 	my ( $self, $url, $cb, $params ) = @_;
 
-	# TODO - caching
-
 	$self->getToken(sub {
 		my ($token) = @_;
 
@@ -434,7 +445,30 @@ sub _get {
 				'Authorization' => 'Bearer ' . $token,
 			);
 
+			my $ttl = delete $params->{_ttl} || DEFAULT_TTL;
+			my $noCache = delete $params->{_nocache};
+
+			$params->{limit} ||= DEFAULT_LIMIT;
+
+			my $maxLimit = 0;
+			if ($params->{limit} > DEFAULT_LIMIT) {
+				$maxLimit = $params->{limit};
+				$params->{limit} = DEFAULT_LIMIT;
+			}
+
 			my $query = complex_to_query($params);
+
+			# TODO - optimize for the paging case. We're currently skipping the first page if a large
+			# resultset is requested. We need to detach the cache key from the query string, but cache
+			# the overall result instead
+			if (!$noCache && !$maxLimit && (my $cached = $cache->get('tidal_resp_' . $url . $query))) {
+				main::INFOLOG && $log->is_info && $log->info("Returning cached data for $url?$query");
+				main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($cached));
+
+				return $cb->($cached);
+			}
+
+			main::INFOLOG && $log->is_info && $log->info("Getting $url?$query");
 
 			Slim::Networking::SimpleAsyncHTTP->new(
 				sub {
@@ -444,6 +478,47 @@ sub _get {
 
 					$@ && $log->error($@);
 					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
+
+					$cache->set('tidal_resp_' . $url . $query, $result, $ttl) unless $noCache;
+
+					if ($maxLimit && ref $result eq 'HASH' && $maxLimit > $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - DEFAULT_LIMIT > 0) {
+						my $remaining = $result->{totalNumberOfItems} - DEFAULT_LIMIT;
+						main::INFOLOG && $log->is_info && $log->info("We need to page to get $remaining more results");
+
+						my @offsets;
+						my $offset = DEFAULT_LIMIT;
+						my $maxOffset = min($maxLimit, MAX_LIMIT, $result->{totalNumberOfItems});
+						do {
+							push @offsets, $offset;
+							$offset += DEFAULT_LIMIT;
+						} while ($offset < $maxOffset);
+
+						if (scalar @offsets) {
+							Async::Util::amap(
+								inputs => \@offsets,
+								action => sub {
+									my ($input, $acb) = @_;
+									$self->_get($url, $acb, {
+										%$params,
+										offset => $input,
+									});
+								},
+								at_a_time => 4,
+								cb => sub {
+									my ($results, $error) = @_;
+
+									foreach (@$results) {
+										next unless ref $_ && $_->{items};
+										push @{$result->{items}}, @{$_->{items}};
+									}
+
+									$cb->($result);
+								}
+							);
+
+							return;
+						}
+					}
 
 					$cb->($result);
 				},
@@ -458,7 +533,7 @@ sub _get {
 				{
 					cache => 1,
 				}
-			)->get(sprintf('%s%s?%s&limit=%s', BURL, $url, $query, $params->{limit} || 50), %headers);
+			)->get(BURL . "$url?$query", %headers);
 		}
 	});
 }
