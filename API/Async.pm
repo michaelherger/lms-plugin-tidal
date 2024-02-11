@@ -460,6 +460,14 @@ sub _get {
 
 			$params->{limit} ||= DEFAULT_LIMIT;
 
+			my $cacheKey = "tidal_resp:$url:" . join(':', map {
+				$_ . $params->{$_}
+			} sort grep {
+				$_ !~ /^_/
+			} keys %$params);
+
+			main::INFOLOG && $log->is_info && $log->info("Using cache key '$cacheKey'") unless $noCache;
+
 			my $maxLimit = 0;
 			if ($params->{limit} > DEFAULT_LIMIT) {
 				$maxLimit = $params->{limit};
@@ -468,10 +476,7 @@ sub _get {
 
 			my $query = complex_to_query($params);
 
-			# TODO - optimize for the paging case. We're currently skipping the first page if a large
-			# resultset is requested. We need to detach the cache key from the query string, but cache
-			# the overall result instead
-			if (!$noCache && !$maxLimit && (my $cached = $cache->get('tidal_resp_' . $url . $query))) {
+			if (!$noCache && (my $cached = $cache->get($cacheKey))) {
 				main::INFOLOG && $log->is_info && $log->info("Returning cached data for $url?$query");
 				main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($cached));
 
@@ -488,8 +493,6 @@ sub _get {
 
 					$@ && $log->error($@);
 					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
-
-					$cache->set('tidal_resp_' . $url . $query, $result, $ttl) unless $noCache;
 
 					if ($maxLimit && ref $result eq 'HASH' && $maxLimit > $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - DEFAULT_LIMIT > 0) {
 						my $remaining = $result->{totalNumberOfItems} - DEFAULT_LIMIT;
@@ -522,6 +525,8 @@ sub _get {
 										push @{$result->{items}}, @{$_->{items}};
 									}
 
+									$cache->set($cacheKey, $result, $ttl) unless $noCache;
+
 									$cb->($result);
 								}
 							);
@@ -529,6 +534,8 @@ sub _get {
 							return;
 						}
 					}
+
+					$cache->set($cacheKey, $result, $ttl) unless $noCache;
 
 					$cb->($result);
 				},
