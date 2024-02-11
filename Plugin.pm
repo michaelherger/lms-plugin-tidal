@@ -164,7 +164,7 @@ sub getFavorites {
 	getAPIHandler($client)->getFavorites(sub {
 		my $items = shift;
 
-		$items = [ map { _renderItem($client, $_) } @$items ] if $items;
+		$items = [ map { _renderItem($client, $_, 1) } @$items ] if $items;
 
 		$cb->( {
 			items => $items
@@ -259,7 +259,7 @@ sub getGenres {
 sub getGenreItems {
 	my ( $client, $cb, $args, $params ) = @_;
 	getAPIHandler($client)->genreByType(sub {
-		my $items = [ map { _renderItem($client, $_) } @{$_[0]} ];
+		my $items = [ map { _renderItem($client, $_, 1) } @{$_[0]} ];
 
 		$cb->( {
 			items => $items
@@ -293,12 +293,12 @@ sub getMoodPlaylists {
 			items => $items
 		} );
 	}, $params->{mood} );
-}	
+}
 
 sub getPlaylist {
 	my ( $client, $cb, $args, $params ) = @_;
 	getAPIHandler($client)->playlist(sub {
-		my $items = _renderTracks(shift);
+		my $items = _renderTracks($_[0], 1);
 		$cb->( {
 			items => $items
 		} );
@@ -323,15 +323,15 @@ sub search {
 }
 
 sub _renderItem {
-	my ($client, $item) = @_;
+	my ($client, $item, $addArtistToTitle) = @_;
 
 	my $type = Plugins::TIDAL::API->typeOfItem($item);
 
 	if ($type eq 'track') {
-		return _renderTrack($item);
+		return _renderTrack($item, $addArtistToTitle);
 	}
 	elsif ($type eq 'album') {
-		return _renderAlbum($item);
+		return _renderAlbum($item, $addArtistToTitle);
 	}
 	elsif ($type eq 'artist') {
 		return _renderArtist($client, $item);
@@ -364,18 +364,21 @@ sub _renderPlaylist {
 }
 
 sub _renderAlbums {
-	my $results = shift;
+	my ($results, $addArtistToTitle) = @_;
 
 	return [ map {
-		_renderAlbum($_);
+		_renderAlbum($_, $addArtistToTitle);
 	} @{$results} ];
 }
 
 sub _renderAlbum {
-	my $item = shift;
+	my ($item, $addArtistToTitle) = @_;
+
+	my $title = $item->{title};
+	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
 
 	return {
-		name => $item->{title},
+		name => $title,
 		line1 => $item->{title},
 		line2 => $item->{artist}->{name},
 		type => 'playlist',
@@ -386,18 +389,21 @@ sub _renderAlbum {
 }
 
 sub _renderTracks {
-	my $tracks = shift;
+	my ($tracks, $addArtistToTitle) = @_;
 
 	return [ map {
-		_renderTrack($_);
+		_renderTrack($_, $addArtistToTitle);
 	} @$tracks ];
 }
 
 sub _renderTrack {
-	my $item = shift;
+	my ($item, $addArtistToTitle) = @_;
+
+	my $title = $item->{title};
+	$title .= ' - ' . $item->{artist} if $addArtistToTitle;
 
 	return {
-		name => $item->{title},
+		name => $title,
 		line1 => $item->{title},
 		line2 => $item->{artist},
 		on_select => 'play',
