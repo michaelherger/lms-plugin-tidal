@@ -237,6 +237,7 @@ sub getMetadataFor {
 			return unless $meta;
 
 			main::DEBUGLOG && $log->is_debug && $log->debug("found metadata for $trackId", Data::Dump::dump($meta));
+			return if @pendingMeta;
 
 			# Update the playlist time so the web will refresh, etc
 			$client->currentPlaylistUpdateTime( Time::HiRes::time() );
