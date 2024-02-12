@@ -3,9 +3,11 @@ package Plugins::TIDAL::API::Async;
 use strict;
 use base qw(Slim::Utils::Accessor);
 
+use Async::Util;
 use Data::URIEncode qw(complex_to_query);
 use MIME::Base64 qw(encode_base64url encode_base64);
 use JSON::XS::VersionOneAndTwo;
+use List::Util qw(min);
 
 use Slim::Networking::SimpleAsyncHTTP;
 use Slim::Utils::Cache;
@@ -13,7 +15,7 @@ use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(string);
 
-use Plugins::TIDAL::API qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE);
+use Plugins::TIDAL::API qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL USER_CONTENT_TTL);
 
 use constant TOKEN_PATH => '/v1/oauth2/token';
 
@@ -90,6 +92,8 @@ sub artistAlbums {
 		my $artist = shift;
 		my $albums = _filterAlbums($artist->{items}) if $artist;
 		$cb->($albums || []);
+	},{
+		limit => MAX_LIMIT,
 	});
 }
 
@@ -102,11 +106,37 @@ sub _filterAlbums {
 	} @$albums ];
 }
 
+sub featured {
+	my ($self, $cb) = @_;
+	$self->_get("/featured", $cb);
+}
+
+sub featuredItem {
+	my ($self, $cb, $args) = @_;
+
+	my $id = $args->{id};
+	my $type = $args->{type};
+
+	return $cb->() unless $id && $type;
+
+	$self->_get("/featured/$id/$type", sub {
+		my $items = shift;
+		my $tracks = $items->{items} if $items;
+		$tracks = Plugins::TIDAL::API->cacheTrackMetadata($tracks) if $tracks && $type eq 'tracks';
+
+		$cb->($tracks || []);
+	});
+}
+
 sub mix {
 	my ($self, $cb, $id) = @_;
 
-	$self->_get("/mixes/$id/items", sub {
+	my $path = $id eq 'daily' ? 'track' : 'items';
+
+	$self->_get("/mixes/$id/$path", sub {
 		my $mix = shift;
+
+		$mix = { items => $mix } if ref $mix eq 'ARRAY';
 
 		my $tracks = Plugins::TIDAL::API->cacheTrackMetadata([ map {
 			$_->{item}
@@ -116,8 +146,7 @@ sub mix {
 
 		$cb->($tracks || []);
 	}, {
-		mixId => $id,
-		deviceType => 'BROWSER',
+		limit => MAX_LIMIT,
 	});
 }
 
@@ -135,10 +164,7 @@ sub albumTracks {
 
 sub genres {
 	my ($self, $cb) = @_;
-
-	$self->_get('/genres', sub {
-		$cb->(@_);
-	});
+	$self->_get('/genres', $cb);
 }
 
 sub genreByType {
@@ -154,10 +180,7 @@ sub genreByType {
 
 sub moods {
 	my ($self, $cb) = @_;
-
-	$self->_get('/moods', sub {
-		$cb->(@_);
-	});
+	$self->_get('/moods', $cb);
 }
 
 sub moodPlaylists {
@@ -165,6 +188,8 @@ sub moodPlaylists {
 
 	$self->_get("/moods/$mood/playlists", sub {
 		$cb->(@_);
+	},{
+		limit => MAX_LIMIT,
 	});
 }
 
@@ -181,6 +206,8 @@ sub playlist {
 		} @{$result->{items} || []} ]) if $result;
 
 		$cb->($items || []);
+	},{
+		limit => MAX_LIMIT,
 	});
 }
 
@@ -198,12 +225,16 @@ sub getFavorites {
 		$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $items && $type eq 'tracks';
 
 		$cb->($items);
+	},{
+		_ttl => USER_CONTENT_TTL,
+		limit => MAX_LIMIT,
 	});
 }
 
-
 sub getTrackUrl {
 	my ($self, $cb, $id, $params) = @_;
+
+	$params->{_noCache} = 1;
 
 	$self->_get('/tracks/' . $id . '/playbackinfopostpaywall', sub {
 		$cb->(@_);
@@ -244,16 +275,8 @@ sub _delayedPollDeviceAuth {
 					Slim::Utils::Timers::setTimer($deviceCode, time() + ($args->{interval} || 2), \&_delayedPollDeviceAuth, $args);
 					return;
 				}
-				elsif ($result->{user} && $result->{user_id}) {
-					my $accounts = $prefs->get('accounts');
-
-					my $userId = $result->{user_id};
-					# have token expire a little early
-					$cache->set("tidal_at_$userId", $result->{access_token}, $result->{expires_in} - 300);
-
-					$result->{user}->{refreshToken} = $result->{refresh_token};
-					$accounts->{$userId} = $result->{user};
-					$prefs->set('accounts', $accounts);
+				else {
+					_storeTokens($result)
 				}
 
 				delete $deviceCodes{$deviceCode};
@@ -347,24 +370,42 @@ sub getToken {
 sub refreshToken {
 	my ( $self, $cb ) = @_;
 
-	my $accounts = $prefs->client($self->client)->get('accounts') || {};
+	my $accounts = $prefs->get('accounts') || {};
 	my $profile  = $accounts->{$self->userId};
 
 	if ( $profile && (my $refreshToken = $profile->{refreshToken}) ) {
 		__PACKAGE__->_authCall(TOKEN_PATH, sub {
-			warn Data::Dump::dump(@_);
-			# TODO - store tokens etc.
-			$cb->();
+			$cb->(_storeTokens(@_));
 		},{
 			grant_type => 'refresh_token',
 			refresh_token => $refreshToken,
 		});
 	}
 	else {
-		# TODO warning
+		$log->error('Did find neither access nor refresh token. Please re-authenticate.');
+		# TODO expose warning on client
 		$cb->();
 	}
 }
+
+sub _storeTokens {
+	my ($result) = @_;
+
+	if ($result->{user} && $result->{user_id} && $result->{access_token}) {
+		my $accounts = $prefs->get('accounts');
+
+		my $userId = $result->{user_id};
+		# have token expire a little early
+		$cache->set("tidal_at_$userId", $result->{access_token}, $result->{expires_in} - 300);
+
+		$result->{user}->{refreshToken} = $result->{refresh_token};
+		$accounts->{$userId} = $result->{user};
+		$prefs->set('accounts', $accounts);
+	}
+
+	return $result->{access_token};
+}
+
 
 my $URL_REGEX = qr{^https://(?:\w+\.)?tidal.com/(?:browse/)?(track|playlist|album|artist|mix)/([a-z\d-]+)}i;
 my $URI_REGEX = qr{^wimp://(playlist|album|artist|mix|):?([0-9a-z-]+)}i;
@@ -413,8 +454,6 @@ sub getIdsForURL {
 sub _get {
 	my ( $self, $url, $cb, $params ) = @_;
 
-	# TODO - caching
-
 	$self->getToken(sub {
 		my ($token) = @_;
 
@@ -434,7 +473,35 @@ sub _get {
 				'Authorization' => 'Bearer ' . $token,
 			);
 
+			my $ttl = delete $params->{_ttl} || DEFAULT_TTL;
+			my $noCache = delete $params->{_nocache};
+
+			$params->{limit} ||= DEFAULT_LIMIT;
+
+			my $cacheKey = "tidal_resp:$url:" . join(':', map {
+				$_ . $params->{$_}
+			} sort grep {
+				$_ !~ /^_/
+			} keys %$params);
+
+			main::INFOLOG && $log->is_info && $log->info("Using cache key '$cacheKey'") unless $noCache;
+
+			my $maxLimit = 0;
+			if ($params->{limit} > DEFAULT_LIMIT) {
+				$maxLimit = $params->{limit};
+				$params->{limit} = DEFAULT_LIMIT;
+			}
+
 			my $query = complex_to_query($params);
+
+			if (!$noCache && (my $cached = $cache->get($cacheKey))) {
+				main::INFOLOG && $log->is_info && $log->info("Returning cached data for $url?$query");
+				main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($cached));
+
+				return $cb->($cached);
+			}
+
+			main::INFOLOG && $log->is_info && $log->info("Getting $url?$query");
 
 			Slim::Networking::SimpleAsyncHTTP->new(
 				sub {
@@ -444,6 +511,49 @@ sub _get {
 
 					$@ && $log->error($@);
 					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
+
+					if ($maxLimit && ref $result eq 'HASH' && $maxLimit > $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - DEFAULT_LIMIT > 0) {
+						my $remaining = $result->{totalNumberOfItems} - DEFAULT_LIMIT;
+						main::INFOLOG && $log->is_info && $log->info("We need to page to get $remaining more results");
+
+						my @offsets;
+						my $offset = DEFAULT_LIMIT;
+						my $maxOffset = min($maxLimit, MAX_LIMIT, $result->{totalNumberOfItems});
+						do {
+							push @offsets, $offset;
+							$offset += DEFAULT_LIMIT;
+						} while ($offset < $maxOffset);
+
+						if (scalar @offsets) {
+							Async::Util::amap(
+								inputs => \@offsets,
+								action => sub {
+									my ($input, $acb) = @_;
+									$self->_get($url, $acb, {
+										%$params,
+										offset => $input,
+									});
+								},
+								at_a_time => 4,
+								cb => sub {
+									my ($results, $error) = @_;
+
+									foreach (@$results) {
+										next unless ref $_ && $_->{items};
+										push @{$result->{items}}, @{$_->{items}};
+									}
+
+									$cache->set($cacheKey, $result, $ttl) unless $noCache;
+
+									$cb->($result);
+								}
+							);
+
+							return;
+						}
+					}
+
+					$cache->set($cacheKey, $result, $ttl) unless $noCache;
 
 					$cb->($result);
 				},
@@ -458,7 +568,7 @@ sub _get {
 				{
 					cache => 1,
 				}
-			)->get(sprintf('%s%s?%s&limit=%s', BURL, $url, $query, $params->{limit} || 50), %headers);
+			)->get(BURL . "$url?$query", %headers);
 		}
 	});
 }

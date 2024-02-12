@@ -7,7 +7,7 @@ use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 
-our @EXPORT_OK = qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE);
+our @EXPORT_OK = qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL USER_CONTENT_TTL);
 
 use constant AURL => 'https://auth.tidal.com';
 use constant BURL => 'https://api.tidal.com/v1';
@@ -15,6 +15,10 @@ use constant KURL => 'https://gist.githubusercontent.com/yaronzz/48d01f5a24b4b7b
 use constant IURL => 'http://resources.tidal.com/images/';
 use constant SCOPES => 'r_usr+w_usr';
 use constant GRANT_TYPE_DEVICE => 'urn:ietf:params:oauth:grant-type:device_code';
+use constant DEFAULT_LIMIT => 50;
+use constant MAX_LIMIT => 2000;
+use constant DEFAULT_TTL => 86400;
+use constant USER_CONTENT_TTL => 300;
 
 use constant IMAGE_SIZES => {
 	album  => '1280x1280',
