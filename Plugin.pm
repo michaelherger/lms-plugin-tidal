@@ -199,6 +199,18 @@ sub getArtistAlbums {
 	}, $params->{id});
 }
 
+sub getMyMixes {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->myMixes(sub {
+		my $mixes = shift;
+		my $items = [ map { warn Data::Dump::dump($_); _renderMix($_) } @$mixes ];
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{id});
+}
+
 sub getMix {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -344,6 +356,9 @@ sub _renderItem {
 	elsif ($type eq 'category') {
 		return _renderCategory($client, $item, $args->{handler});
 	}
+	elsif ($type eq 'mix') {
+		return _renderMix($client, $item);
+	}
 }
 
 sub _renderPlaylists {
@@ -457,6 +472,20 @@ sub _renderArtist {
 		name => $item->{name},
 		image => Plugins::TIDAL::API->getImageUrl($item),
 	};
+}
+
+sub _renderMix {
+	my ($client, $item) = @_;
+
+	return {
+		name => $item->{title},
+		line1 => $item->{title},
+		line2 => join(', ', map { $_->{name} } @{$item->{artists}}),
+		type => 'playlist',
+		url => \&getMix,
+		image => Plugins::TIDAL::API->getImageUrl($item),
+		passthrough => [{ id => $item->{id} }],
+	}
 }
 
 sub _renderCategory {

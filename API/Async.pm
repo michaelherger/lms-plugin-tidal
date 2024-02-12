@@ -128,15 +128,22 @@ sub featuredItem {
 	});
 }
 
+sub myMixes {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get("/mixes/daily/track", sub {
+		$cb->(@_);
+	}, {
+		limit => MAX_LIMIT,
+		_ttl => 3600,
+	});
+}
+
 sub mix {
 	my ($self, $cb, $id) = @_;
 
-	my $path = $id eq 'daily' ? 'track' : 'items';
-
-	$self->_get("/mixes/$id/$path", sub {
+	$self->_get("/mixes/$id/items", sub {
 		my $mix = shift;
-
-		$mix = { items => $mix } if ref $mix eq 'ARRAY';
 
 		my $tracks = Plugins::TIDAL::API->cacheTrackMetadata([ map {
 			$_->{item}
@@ -147,6 +154,7 @@ sub mix {
 		$cb->($tracks || []);
 	}, {
 		limit => MAX_LIMIT,
+		_ttl => 3600,
 	});
 }
 
@@ -471,6 +479,7 @@ sub _get {
 
 			my %headers = (
 				'Authorization' => 'Bearer ' . $token,
+				'X-Tidal-SessionId' => Plugins::TIDAL::API->getSID($token),
 			);
 
 			my $ttl = delete $params->{_ttl} || DEFAULT_TTL;
