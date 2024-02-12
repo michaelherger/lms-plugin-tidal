@@ -116,3 +116,7 @@ PLUGIN_TIDAL_FEATURES
 	NO	Utvalgte
 	SV	Utvalt
 	PL	Polecane
+
+PLUGIN_TIDAL_TRACKS
+	DE	Titel
+	EN	Tracks
