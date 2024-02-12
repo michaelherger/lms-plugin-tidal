@@ -129,7 +129,7 @@ sub cacheTrackMetadata {
 			artist => $entry->{artist}->{name},
 			artists => $entry->{artists},
 			album => $entry->{album}->{title},
-			duration => $entry->{duration} * 1000,
+			duration => $entry->{duration},
 			icon => $icon,
 			cover => $icon,
 			replay_gain => $entry->{replayGain} || 0,
