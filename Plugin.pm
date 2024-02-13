@@ -121,7 +121,7 @@ sub handleFeed {
 		name => cstring($client, 'PLUGIN_TIDAL_MY_MIX'),
 		image => 'plugins/TIDAL/html/mix.png',
 		type => 'playlist',
-		url => \&getMix,
+		url => \&getMyMixes,
 		passthrough => [{ id => 'daily' }],
 	},{
 		name  => cstring($client, 'GENRES'),
@@ -203,8 +203,7 @@ sub getMyMixes {
 	my ( $client, $cb, $args, $params ) = @_;
 
 	getAPIHandler($client)->myMixes(sub {
-		my $mixes = shift;
-		my $items = [ map { warn Data::Dump::dump($_); _renderMix($_) } @$mixes ];
+		my $items = [ map { _renderMix($client, $_) } @{$_[0]} ];
 		$cb->( {
 			items => $items
 		} );
@@ -485,7 +484,7 @@ sub _renderMix {
 		url => \&getMix,
 		image => Plugins::TIDAL::API->getImageUrl($item),
 		passthrough => [{ id => $item->{id} }],
-	}
+	};
 }
 
 sub _renderCategory {

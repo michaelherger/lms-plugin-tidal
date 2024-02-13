@@ -2,8 +2,6 @@ package Plugins::TIDAL::API;
 
 use strict;
 use Exporter::Lite;
-use JSON::XS::VersionOneAndTwo;
-use MIME::Base64 qw(decode_base64);
 
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
@@ -75,6 +73,10 @@ sub getImageUrl {
 			delete $data->{cover};
 		}
 	}
+	elsif (my $images = $data->{mixImages}) {
+		my $image = $images->{L} || $images->{M} || $images->{S};
+		$data->{cover} = $image->{url} if $image;
+	}
 
 	return $data->{cover};
 }
@@ -143,35 +145,6 @@ sub cacheTrackMetadata {
 
 		$meta;
 	} @$tracks ];
-}
-
-sub getSID {
-	my ($class, $token) = @_;
-
-	my $jwtClaims = $class->claimsFromJWT($token);
-	return $jwtClaims->{sid} if $jwtClaims;
-}
-
-# This is a VERY basic JWT decoding - no validation, no headers, no nothing
-sub claimsFromJWT {
-	my ($class, $jwt) = @_;
-
-	return unless $jwt;
-
-	my $claims;
-	eval {
-		my ($claimsSegment) = $jwt =~ /\.([^.]+)/;
-		$claimsSegment =~ tr[-_][+/];
-		$claimsSegment .= '=' while length($claimsSegment) % 4;
-		$claims = from_json(decode_base64($claimsSegment));
-	};
-
-	if ($@) {
-		$log->error("Failed to decode JWT: $@");
-		return;
-	}
-
-	return $claims;
 }
 
 1;

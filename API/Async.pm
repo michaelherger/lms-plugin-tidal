@@ -479,7 +479,6 @@ sub _get {
 
 			my %headers = (
 				'Authorization' => 'Bearer ' . $token,
-				'X-Tidal-SessionId' => Plugins::TIDAL::API->getSID($token),
 			);
 
 			my $ttl = delete $params->{_ttl} || DEFAULT_TTL;
