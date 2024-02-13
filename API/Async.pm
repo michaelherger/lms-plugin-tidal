@@ -129,7 +129,7 @@ sub featuredItem {
 }
 
 sub myMixes {
-	my ($self, $cb, $id) = @_;
+	my ($self, $cb) = @_;
 
 	$self->_get("/mixes/daily/track", sub {
 		$cb->(@_);
@@ -199,6 +199,22 @@ sub moodPlaylists {
 	},{
 		limit => MAX_LIMIT,
 	});
+}
+
+sub userPlaylists {
+	my ($self, $cb, $userId) = @_;
+
+	$userId ||= $self->userId;
+
+	$self->_get("/users/$userId/playlists", sub {
+		my $result = shift;
+		my $items = $result->{items} if $result;
+
+		$cb->($items);
+	},{
+		limit => MAX_LIMIT,
+		_ttl => 300,
+	})
 }
 
 sub playlist {

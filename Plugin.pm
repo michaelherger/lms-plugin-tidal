@@ -1,6 +1,7 @@
 package Plugins::TIDAL::Plugin;
 
 use strict;
+use Async::Util;
 
 use base qw(Slim::Plugin::OPMLBased);
 
@@ -64,30 +65,33 @@ sub handleFeed {
 		type => 'link',
 		url => \&getFeatured,
 	},{
-		name => cstring($client, 'FAVORITES'),
-		image => 'html/images/favorites.png',
-		type => 'outline',
-		items => [{
-			name => cstring($client, 'PLAYLISTS'),
-			type => 'link',
-			url => \&getFavorites,
-			passthrough => [{ type => 'playlists' }],
-		},{
-			name => cstring($client, 'ALBUMS'),
-			type => 'link',
-			url => \&getFavorites,
-			passthrough => [{ type => 'albums' }],
-		},{
-			name => cstring($client, 'ARTISTS'),
-			type => 'link',
-			url => \&getFavorites,
-			passthrough => [{ type => 'artists' }],
-		},{
-			name => cstring($client, 'TRACKS'),
-			type => 'link',
-			url => \&getFavorites,
-			passthrough => [{ type => 'tracks' }],
-		}]
+		name => cstring($client, 'PLUGIN_TIDAL_MY_MIX'),
+		image => 'plugins/TIDAL/html/mix.png',
+		type => 'playlist',
+		url => \&getMyMixes,
+	},{
+		name => cstring($client, 'PLAYLISTS'),
+		image => 'html/images/playlists.png',
+		type => 'link',
+		url => \&getFavoritePlaylists,
+	},{
+		name => cstring($client, 'ALBUMS'),
+		image => 'html/images/albums.png',
+		type => 'link',
+		url => \&getFavorites,
+		passthrough => [{ type => 'albums' }],
+	},{
+		name => cstring($client, 'TRACKS'),
+		image => 'html/images/playall.png',
+		type => 'link',
+		url => \&getFavorites,
+		passthrough => [{ type => 'tracks' }],
+	},{
+		name => cstring($client, 'ARTISTS'),
+		image => 'html/images/artists.png',
+		type => 'link',
+		url => \&getFavorites,
+		passthrough => [{ type => 'artists' }],
 	},{
 		name  => cstring($client, 'SEARCH'),
 		image => 'html/images/search.png',
@@ -118,12 +122,6 @@ sub handleFeed {
 			passthrough => [ { type => 'tracks' } ],
 		}]
 	},{
-		name => cstring($client, 'PLUGIN_TIDAL_MY_MIX'),
-		image => 'plugins/TIDAL/html/mix.png',
-		type => 'playlist',
-		url => \&getMyMixes,
-		passthrough => [{ id => 'daily' }],
-	},{
 		name  => cstring($client, 'GENRES'),
 		image => 'html/images/genres.png',
 		type => 'link',
@@ -134,8 +132,6 @@ sub handleFeed {
 		type => 'link',
 		url  => \&getMoods,
 	} ];
-
-	# TODO - more menu items...
 
 	if ($client && scalar keys %{$prefs->get('accounts') || {}} > 1) {
 		push @$items, {
@@ -174,6 +170,49 @@ sub selectAccount {
 	$cb->({ items => $items });
 }
 
+sub getFavoritePlaylists {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	Async::Util::amap(
+		inputs => [
+			sub {
+				getFavorites($client, shift, {}, { type => 'playlists' });
+			},
+			sub {
+				my $acb = shift;
+				getAPIHandler($client)->userPlaylists(sub {
+					my $items = shift;
+
+					$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ] if $items;
+					$acb->( {
+						items => $items
+					} );
+				});
+			}
+		],
+		action => sub {
+			my ($input, $acb) = @_;
+			$input->($acb);
+		},
+		cb => sub {
+			my ($results, $error) = @_;
+
+			my %seen;
+			my $items = [ sort {
+				$a->{name} cmp $b->{name}
+			} grep {
+				!$seen{$_->{passthrough}->[0]->{uuid}}++
+			} map {
+				@{$_->{items}}
+			} @$results ];
+
+			$cb->({
+				items => $items
+			});
+		}
+	);
+}
+
 sub getFavorites {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -200,14 +239,14 @@ sub getArtistAlbums {
 }
 
 sub getMyMixes {
-	my ( $client, $cb, $args, $params ) = @_;
+	my ( $client, $cb ) = @_;
 
 	getAPIHandler($client)->myMixes(sub {
 		my $items = [ map { _renderMix($client, $_) } @{$_[0]} ];
 		$cb->( {
 			items => $items
 		} );
-	}, $params->{id});
+	});
 }
 
 sub getMix {
