@@ -419,11 +419,14 @@ sub _storeTokens {
 		my $accounts = $prefs->get('accounts');
 
 		my $userId = $result->{user_id};
+
 		# have token expire a little early
 		$cache->set("tidal_at_$userId", $result->{access_token}, $result->{expires_in} - 300);
 
-		$result->{user}->{refreshToken} = $result->{refresh_token};
-		$accounts->{$userId} = $result->{user};
+		$result->{user}->{refreshToken} = $result->{refresh_token} if $result->{refresh_token};
+		my %account = (%{$accounts->{$userId} || {}}, %{$result->{user}});
+		$accounts->{$userId} = \%account;
+
 		$prefs->set('accounts', $accounts);
 	}
 
@@ -604,8 +607,6 @@ sub _authCall {
 	$bearer =~ s/\s//g;
 
 	$params->{client_id} ||= $cid;
-
-	warn complex_to_query($params),
 
 	Slim::Networking::SimpleAsyncHTTP->new(
 		sub {
