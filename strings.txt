@@ -16,14 +16,15 @@ PLUGIN_TIDAL_AUTH
 	FR	Autorisation TIDAL
 	NL	TIDAL Autorisatie
 	IT	Autorizza TIDAL
+
 PLUGIN_TIDAL_IMPORT_LIBRARY
 	CS	Importovat
 	DE	Importieren
 	EN	Import
 	FR	Importer
-	IT Import
+	IT	Import
 	NL	Importeren
-	
+
 PLUGIN_TIDAL_ACCOUNT
 	CS	Účet
 	DA	Konto
