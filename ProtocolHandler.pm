@@ -14,6 +14,9 @@ use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 use Slim::Utils::Timers;
 
+use Plugins::TIDAL::Plugin;
+use Plugins::TIDAL::API;
+
 use base qw(Slim::Player::Protocols::HTTPS);
 
 my $prefs = preferences('plugin.tidal');
@@ -29,7 +32,9 @@ sub canSkip { 1 }	# where is this called?
 sub canSeek { 1 }
 
 sub getFormatForURL {
-	return getFormat();
+	my ($class, $url) = @_;
+	return if $url =~ /\.tdl$/;
+	return Plugins::TIDAL::API::getFormat();
 }
 
 sub formatOverride {
@@ -148,7 +153,7 @@ sub getNextTrack {
 
 		# this should not happen
 		if ($format ne $class->getFormat) {
-			$log->warn("did not get the expected format for $trackId ($format <> " . $class->getFormat() . ')');
+			$log->warn("did not get the expected format for $trackId ($format <> " . Plugins::TIDAL::API->getFormat() . ')');
 			$song->pluginData(format => $format);
 		}
 
@@ -206,9 +211,12 @@ sub getMetadataFor {
 
 	my $trackId = _getId($url);
 	my $meta = $cache->get( 'tidal_meta_' . ($trackId || '') );
-	
-	# if metadata is in cache, we just need to add bitrate 
+
+	# if metadata is in cache, we just need to add bitrate
 	if ($meta) {
+		# TODO - remove if we decide to move to our own cache file which we can version
+		$meta->{artist} = $meta->{artist}->{name} if ref $meta->{artist};
+
 		my $song = $client->playingSong();
 		if ($song && ($song->track->url eq $url || $song->currentTrack->url eq $url)) {
 			$meta->{bitrate} = $song->pluginData('bitrate') || 'n/a';
@@ -249,7 +257,7 @@ sub getMetadataFor {
 
 	return $meta || {
 		bitrate   => 'N/A',
-		type      => getFormat(),
+		type      => Plugins::TIDAL::API->getFormat(),
 		icon      => $icon,
 		cover     => $icon,
 	};

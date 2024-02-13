@@ -15,8 +15,10 @@ use constant KURL => 'https://gist.githubusercontent.com/yaronzz/48d01f5a24b4b7b
 use constant IURL => 'http://resources.tidal.com/images/';
 use constant SCOPES => 'r_usr+w_usr';
 use constant GRANT_TYPE_DEVICE => 'urn:ietf:params:oauth:grant-type:device_code';
-use constant DEFAULT_LIMIT => 50;
+
+use constant DEFAULT_LIMIT => 100;
 use constant MAX_LIMIT => 2000;
+
 use constant DEFAULT_TTL => 86400;
 use constant USER_CONTENT_TTL => 300;
 
@@ -29,6 +31,12 @@ use constant IMAGE_SIZES => {
 	genre  => '640x426',
 	playlist => '1080x720',
 	playlistSquare => '1080x1080',
+};
+
+use constant SOUND_QUALITY => {
+	LOW => 'mp4',
+	HIGH => 'mp4',
+	LOSSLESS => 'flc',
 };
 
 my $cache = Slim::Utils::Cache->new;
@@ -51,10 +59,17 @@ sub getCountryCode {
 	return $accounts->{$userId}->{countryCode} || 'US';
 }
 
+sub getFormat {
+	return SOUND_QUALITY->{$prefs->get('quality')};
+}
+
 sub getImageUrl {
 	my ($class, $data, $type) = @_;
 
 	if ( my $coverId = $data->{cover} || $data->{image} || $data->{squareImage} || $data->{picture} || ($data->{album} && $data->{album}->{cover}) ) {
+
+		return $data->{cover} = $coverId if $coverId =~ /^https?:/;
+
 		$type ||= $class->typeOfItem($data);
 		my $iconSize;
 
@@ -121,8 +136,10 @@ sub cacheTrackMetadata {
 
 	return [ map {
 		my $entry = $_;
+		$entry = $entry->{item} if $entry->{item};
 
 		my $oldMeta = $cache->get( 'tidal_meta_' . $entry->{id}) || {};
+		# TODO - PH is not loaded in scanner mode!
 		my $icon = $class->getImageUrl($entry, 'track') || Plugins::TIDAL::Protocolhandler->getIcon();
 
 		# consolidate metadata in case parsing of stream came first (huh?)
@@ -130,7 +147,7 @@ sub cacheTrackMetadata {
 			%$oldMeta,
 			id => $entry->{id},
 			title => $entry->{title},
-			artist => $entry->{artist}->{name},
+			artist => $entry->{artist},
 			artists => $entry->{artists},
 			album => $entry->{album}->{title},
 			duration => $entry->{duration},
@@ -138,6 +155,7 @@ sub cacheTrackMetadata {
 			cover => $icon,
 			replay_gain => $entry->{replayGain} || 0,
 			disc => $entry->{volumeNumber},
+			tracknum => $entry->{trackNumber},
 		};
 
 		# cache track metadata aggressively

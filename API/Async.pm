@@ -5,9 +5,10 @@ use base qw(Slim::Utils::Accessor);
 
 use Async::Util;
 use Data::URIEncode qw(complex_to_query);
+use Date::Parse qw(str2time);
 use MIME::Base64 qw(encode_base64url encode_base64);
 use JSON::XS::VersionOneAndTwo;
-use List::Util qw(min);
+use List::Util qw(min maxstr reduce);
 
 use Slim::Networking::SimpleAsyncHTTP;
 use Slim::Utils::Cache;
@@ -253,6 +254,44 @@ sub getFavorites {
 		_ttl => USER_CONTENT_TTL,
 		limit => MAX_LIMIT,
 	});
+}
+
+sub getLatestCollectionTimestamp {
+	my ($self, $cb, $type) = @_;
+
+	my $userId = $self->userId || return $cb->();
+
+	$self->_get("/users/$userId/favorites/$type", sub {
+		my $result = shift;
+
+		my $latestUpdate;
+		eval {
+			if ($type eq 'playlists') {
+				my $items = $result->{items};
+
+				my $timestamp = reduce {
+					my $ta = ref $a ? maxstr($a->{created}, $a->{item}->{lastUpdated}) : $a;
+					my $tb = ref $b ? maxstr($b->{created}, $b->{item}->{lastUpdated}) : $b;
+					maxstr($ta, $tb);
+				} @$items;
+
+				$latestUpdate = str2time($timestamp) || 0;
+			}
+			else {
+				$latestUpdate = str2time($result->{items}->[0]->{created}) || 0;
+			}
+		};
+
+		($@ || !$latestUpdate) && $log->error("Failed to get '$type' metadata: $@");
+
+		$cb->($latestUpdate);
+	},{
+		order => 'DATE',
+		orderDirection => 'DESC',
+		limit => 4,
+		_nocache => 1,
+	});
+
 }
 
 sub getTrackUrl {

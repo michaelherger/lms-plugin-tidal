@@ -8,7 +8,7 @@ PLUGIN_TIDAL_ADD_ACCOUNT
 	FR	Ajouter un compte
 	IT	Aggiungi Account
 	NL	Account toevoegen
-	
+
 PLUGIN_TIDAL_AUTH
 	CS	Autorizace TIDAL
 	DE	TIDAL Anmeldung
@@ -44,12 +44,12 @@ PLUGIN_TIDAL_FOLLOW_LINK
 	DE	Der folgende Link führt Sie zu TIDAL zur Authentifizierung. Bitte folgen Sie ihm, um dem Logitech Media Server Zugriff auf Ihr TIDAL-Konto zu gewähren. Sobald Sie die Anmeldung abgeschlossen haben, kommen Sie hierher zurück:
 	EN	The following link takes you to TIDAL for authentication. Please follow it grant Logitech Media Server access to your TIDAL account. Once you've completed sign-in come back here:
 	IT	Il seguente link reindirizza all'autenticazione di TIDAL. Per favore, garantisci l'accesso al tuo account TIDAL a Logitech Media Server e torna in questa pagina una volta completato il login.
-	
+
 PLUGIN_TIDAL_REQUIRES_CREDENTIALS
 	DE	Bitte melden Sie sich in den Server-Einstellungen unter Erweitert/TIDAL an TIDAL an.
 	EN	Please go to Settings/Advanced/TIDAL to authenticate with TIDAL.
 	IT	Per autenticarti con TIDAL, vai a Impostazioni/Avanzate/TIDAL
-	
+
 PLUGIN_TIDAL_SELECT_ACCOUNT
 	CS	Zvolení účtu
 	DA	Vælg konto
@@ -70,18 +70,18 @@ PLUGIN_TIDAL_QUALITY
 	EN	Quality
 	FR	Qualité
 	IT	Qualità
-	
+
 PLUGIN_TIDAL_QUALITY_DESC
 	DE	Stream Qualität
 	EN	Streaming quality
 	FR	Qualité du streaming
 	IT	Qualità dello streaming
-	
+
 PLUGIN_TIDAL_MY_MIX
 	DE	Mein Mix
 	EN	My Mix
 	IT	I miei Mix
-	
+
 PLUGIN_TIDAL_ARTIST_MIX
 	CS	Mix interpretů
 	DA	Miks baseret på tilfældig kunstner
@@ -117,7 +117,7 @@ PLUGIN_TIDAL_MOODS
 	EN	Moods
 	FR	Ambiances
 	IT	Moods
-	
+
 PLUGIN_TIDAL_FEATURES
 	DA	Udvalgte
 	EN	Featured
@@ -128,7 +128,45 @@ PLUGIN_TIDAL_FEATURES
 	SV	Utvalt
 	PL	Polecane
 
-PLUGIN_TIDAL_TRACKS
-	DE	Titel
-	EN	Tracks
-	IT	Tracce
+PLUGIN_TIDAL_ALBUMS_PROGRESS
+	CS	Alba TIDALu
+	DE	TIDAL Alben
+	EN	TIDAL Albums
+	FR	TIDAL Albums
+	NL	TIDAL Albums
+
+PLUGIN_TIDAL_PROGRESS_READ_ALBUMS
+	CS	Načítání alb (%s)...
+	DE	Lese Alben (%s)...
+	EN	Fetching Albums (%s)...
+	FR	Récupération des albums (%s)...
+	NL	Albums ophalen (%s)...
+
+PLUGIN_TIDAL_ARTISTS_PROGRESS
+	CS	Interpeti TIDALu
+	DE	TIDAL Interpreten
+	EN	TIDAL Artists
+	FR	TIDAL Artistes
+	NL	TIDAL Artiesten
+
+PLUGIN_TIDAL_PROGRESS_READ_ARTISTS
+	CS	Načítání interpetů (%s)...
+	DE	Lese Interpreten (%s)...
+	EN	Fetching Artists (%s)...
+	FR	Récupération des artistes (%s)...
+	NL	Artiesten ophalen (%s)...
+
+PLUGIN_TIDAL_PLAYLISTS_PROGRESS
+	CS	Seznamy skladeb TIDALu
+	DE	TIDAL Wiedergabelisten
+	EN	TIDAL Playlists
+	FR	TIDAL Listes de lecture
+	NL	TIDAL Afspeellijsten
+
+PLUGIN_TIDAL_PROGRESS_READ_PLAYLISTS
+	CS	Získávání seznamů skladeb (%s)...
+	DE	Lese Wiedergabelisten (%s)...
+	EN	Fetching Playlists (%s)...
+	FR	Récupération des listes de lecture (%s)...
+	NL	Afspeellijsten ophalen (%s)...
+

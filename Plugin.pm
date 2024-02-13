@@ -5,7 +5,6 @@ use Async::Util;
 
 use base qw(Slim::Plugin::OPMLBased);
 
-# use Slim::Networking::SimpleAsyncHTTP;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(cstring);
@@ -37,6 +36,7 @@ sub initPlugin {
 	}
 
 	Slim::Player::ProtocolHandlers->registerHandler('tidal', 'Plugins::TIDAL::ProtocolHandler');
+	Slim::Music::Import->addImporter('Plugins::TIDAL::Importer', { use => 1 });
 
 	$class->SUPER::initPlugin(
 		feed   => \&handleFeed,
@@ -46,7 +46,39 @@ sub initPlugin {
 	);
 }
 
-# TODO - check for account, allow account selection etc.
+sub postinitPlugin {
+	my $class = shift;
+
+	if ( Slim::Utils::PluginManager->isEnabled('Slim::Plugin::OnlineLibrary::Plugin') ) {
+		Slim::Plugin::OnlineLibrary::Plugin->addLibraryIconProvider('wimp', '/plugins/TIDAL/html/emblem.png');
+
+	# TODO
+		# Slim::Plugin::OnlineLibrary::BrowseArtist->registerBrowseArtistItem( TIDAL => sub {
+		# 	my ( $client ) = @_;
+
+		# 	return {
+		# 		name => cstring($client, 'BROWSE_ON_SERVICE', 'TIDAL'),
+		# 		type => 'link',
+		# 		icon => $class->_pluginDataFor('icon'),
+		# 		url  => \&browseArtistMenu,
+		# 	};
+		# } );
+	}
+}
+
+sub onlineLibraryNeedsUpdate {
+	my $class = shift;
+	require Plugins::TIDAL::Importer;
+	return Plugins::TIDAL::Importer->needsUpdate(@_);
+}
+
+# TODO
+# sub getLibraryStats {
+# 	require Plugins::TIDAL::Importer;
+# 	my $totals = Plugins::TIDAL::Importer->getLibraryStats();
+# 	return wantarray ? ('PLUGIN_TIDAL_MODULE_NAME', $totals) : $totals;
+# }
+
 sub handleFeed {
 	my ($client, $cb, $args) = @_;
 
@@ -458,14 +490,14 @@ sub _renderTrack {
 	my ($item, $addArtistToTitle) = @_;
 
 	my $title = $item->{title};
-	$title .= ' - ' . $item->{artist} if $addArtistToTitle;
+	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
 
 	return {
 		name => $title,
 		line1 => $item->{title},
-		line2 => $item->{artist},
+		line2 => $item->{artist}->{name},
 		on_select => 'play',
-		play => "tidal://$item->{id}." . Plugins::TIDAL::ProtocolHandler::getFormat(),
+		play => "tidal://$item->{id}." . Plugins::TIDAL::API::getFormat(),
 		playall => 1,
 		image => $item->{cover},
 	};
