@@ -170,3 +170,7 @@ PLUGIN_TIDAL_PROGRESS_READ_PLAYLISTS
 	FR	Récupération des listes de lecture (%s)...
 	NL	Afspeellijsten ophalen (%s)...
 
+PLUGIN_TIDAL_TRACKS
+	DE	Titel
+	EN	Tracks
+	IT	Tracce
