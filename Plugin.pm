@@ -10,6 +10,7 @@ use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(cstring);
 
 use Plugins::TIDAL::API::Async;
+use Plugins::TIDAL::API::Auth;
 use Plugins::TIDAL::ProtocolHandler;
 
 my $log = Slim::Utils::Log->addLogCategory({
@@ -26,7 +27,7 @@ sub initPlugin {
 		quality => 'HIGH',
 	});
 
-	Plugins::TIDAL::API::Async->init();
+	Plugins::TIDAL::API::Auth->init();
 
 	if (main::WEBUI) {
 		require Plugins::TIDAL::Settings;

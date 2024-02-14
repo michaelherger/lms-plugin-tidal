@@ -33,20 +33,20 @@ sub handler {
 	my ($class, $client, $params, $callback, $httpClient, $response) = @_;
 
 	if ($params->{cancelAuth}) {
-		Plugins::TIDAL::API::Async->cancelDeviceAuth($params->{deviceCode});
+		Plugins::TIDAL::API::Auth->cancelDeviceAuth($params->{deviceCode});
 
 		$response->code(RC_MOVED_TEMPORARILY);
 		$response->header('Location' => 'settings.html');
 		return Slim::Web::HTTP::filltemplatefile($class->page, $params);
 	}
 
-	Plugins::TIDAL::API::Async->initDeviceFlow(sub {
+	Plugins::TIDAL::API::Auth->initDeviceFlow(sub {
 		my $deviceAuthInfo = shift;
 
 		my $deviceCode = $deviceAuthInfo->{deviceCode};
 		$deviceCodes{$deviceCode}++;
 
-		Plugins::TIDAL::API::Async->pollDeviceAuth($deviceAuthInfo, sub {
+		Plugins::TIDAL::API::Auth->pollDeviceAuth($deviceAuthInfo, sub {
 			my $accountInfo = shift || {};
 
 			if ($accountInfo->{user} && $accountInfo->{user_id}) {

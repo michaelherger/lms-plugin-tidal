@@ -6,7 +6,7 @@ use base qw(Slim::Utils::Accessor);
 use Async::Util;
 use Data::URIEncode qw(complex_to_query);
 use Date::Parse qw(str2time);
-use MIME::Base64 qw(encode_base64url encode_base64);
+use MIME::Base64 qw(encode_base64);
 use JSON::XS::VersionOneAndTwo;
 use List::Util qw(min maxstr reduce);
 
@@ -16,9 +16,7 @@ use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(string);
 
-use Plugins::TIDAL::API qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL USER_CONTENT_TTL);
-
-use constant TOKEN_PATH => '/v1/oauth2/token';
+use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL USER_CONTENT_TTL);
 
 {
 	__PACKAGE__->mk_accessor( rw => qw(
@@ -31,14 +29,7 @@ my $cache = Slim::Utils::Cache->new();
 my $log = logger('plugin.tidal');
 my $prefs = preferences('plugin.tidal');
 
-my (%deviceCodes, %apiClients, $cid, $sec);
-
-sub init {
-	$cid = $prefs->get('cid');
-	$sec = $prefs->get('sec');
-
-	__PACKAGE__->fetchKs() unless $cid && $sec;
-}
+my %apiClients;
 
 sub new {
 	my ($class, $args) = @_;
@@ -304,120 +295,6 @@ sub getTrackUrl {
 	}, $params);
 }
 
-sub initDeviceFlow {
-	my ($class, $cb) = @_;
-
-	$class->_authCall('/v1/oauth2/device_authorization', $cb, {
-		scope => SCOPES
-	});
-}
-
-sub pollDeviceAuth {
-	my ($class, $args, $cb) = @_;
-
-	my $deviceCode = $args->{deviceCode} || return $cb->();
-
-	$deviceCodes{$deviceCode} ||= $args;
-	$args->{expiry} ||= time() + $args->{expiresIn};
-	$args->{cb}     ||= $cb if $cb;
-
-	_delayedPollDeviceAuth($deviceCode, $args);
-}
-
-sub _delayedPollDeviceAuth {
-	my ($deviceCode, $args) = @_;
-
-	Slim::Utils::Timers::killTimers($deviceCode, \&_delayedPollDeviceAuth);
-
-	if ($deviceCodes{$deviceCode} && time() <= $args->{expiry}) {
-		__PACKAGE__->_authCall(TOKEN_PATH, sub {
-			my $result = shift;
-
-			if ($result) {
-				if ($result->{error}) {
-					Slim::Utils::Timers::setTimer($deviceCode, time() + ($args->{interval} || 2), \&_delayedPollDeviceAuth, $args);
-					return;
-				}
-				else {
-					_storeTokens($result)
-				}
-
-				delete $deviceCodes{$deviceCode};
-			}
-
-			$args->{cb}->($result) if $args->{cb};
-		},{
-			scope => SCOPES,
-			grant_type => GRANT_TYPE_DEVICE,
-			device_code => $deviceCode,
-		});
-
-		return;
-	}
-
-	# we have timed out
-	main::INFOLOG && $log->is_info && $log->info("we have timed out polling for an access token");
-	delete $deviceCodes{$deviceCode};
-
-	return $args->{cb}->() if $args->{cb};
-
-	$log->error('no callback defined?!?');
-}
-
-sub cancelDeviceAuth {
-	my ($class, $deviceCode) = @_;
-
-	return unless $deviceCode;
-
-	Slim::Utils::Timers::killTimers($deviceCode, \&_delayedPollDeviceAuth);
-	delete $deviceCodes{$deviceCode};
-}
-
-sub fetchKs {
-	my ($class) = @_;
-
-	Slim::Networking::SimpleAsyncHTTP->new(
-		sub {
-			my $response = shift;
-
-			my $result = eval { from_json($response->content) };
-
-			$@ && $log->error($@);
-			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
-
-			my $keys = $result->{keys};
-
-			if ($keys) {
-				$keys = [ sort {
-					$b->{valid} <=> $a->{valid}
-				} grep {
-					$_->{cid} && $_->{sec} && $_->{valid}
-				} map {
-					{
-						cid => $_->{clientId},
-						sec => $_->{clientSecret},
-						valid => $_->{valid} =~ /true/i ? 1 : 0
-					}
-				} grep {
-					$_->{formats} =~ /Normal/
-				} @$keys ];
-
-				if (my $key = shift @$keys) {
-					$cid = $key->{cid};
-					$sec = $key->{sec};
-					$prefs->set('cid', $cid);
-					$prefs->set('sec', $sec);
-				}
-			}
-		},
-		sub {
-			my ($http, $error) = @_;
-
-			$log->warn("Error: $error");
-			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http));
-		}
-	)->get(KURL);
-}
 
 sub getToken {
 	my ( $self, $cb ) = @_;
@@ -427,95 +304,8 @@ sub getToken {
 
 	return $cb->($token) if $token;
 
-	$self->refreshToken($cb);
+	Plugins::TIDAL::API::Auth->refreshToken($cb, $self->userId);
 }
-
-sub refreshToken {
-	my ( $self, $cb ) = @_;
-
-	my $accounts = $prefs->get('accounts') || {};
-	my $profile  = $accounts->{$self->userId};
-
-	if ( $profile && (my $refreshToken = $profile->{refreshToken}) ) {
-		__PACKAGE__->_authCall(TOKEN_PATH, sub {
-			$cb->(_storeTokens(@_));
-		},{
-			grant_type => 'refresh_token',
-			refresh_token => $refreshToken,
-		});
-	}
-	else {
-		$log->error('Did find neither access nor refresh token. Please re-authenticate.');
-		# TODO expose warning on client
-		$cb->();
-	}
-}
-
-sub _storeTokens {
-	my ($result) = @_;
-
-	if ($result->{user} && $result->{user_id} && $result->{access_token}) {
-		my $accounts = $prefs->get('accounts');
-
-		my $userId = $result->{user_id};
-
-		# have token expire a little early
-		$cache->set("tidal_at_$userId", $result->{access_token}, $result->{expires_in} - 300);
-
-		$result->{user}->{refreshToken} = $result->{refresh_token} if $result->{refresh_token};
-		my %account = (%{$accounts->{$userId} || {}}, %{$result->{user}});
-		$accounts->{$userId} = \%account;
-
-		$prefs->set('accounts', $accounts);
-	}
-
-	return $result->{access_token};
-}
-
-
-my $URL_REGEX = qr{^https://(?:\w+\.)?tidal.com/(?:browse/)?(track|playlist|album|artist|mix)/([a-z\d-]+)}i;
-my $URI_REGEX = qr{^wimp://(playlist|album|artist|mix|):?([0-9a-z-]+)}i;
-sub getIdsForURL {
-	my ( $self, $c ) = @_;
-
-	my $uri = $c->req->params->{url};
-
-	my ($type, $id) = $uri =~ $URL_REGEX;
-
-	if ( !($type && $id) ) {
-		($type, $id) = $uri =~ $URI_REGEX;
-	}
-
-	$type ||= 'track';
-	my $result;
-	my $tracks;
-
-	if ($type eq 'playlist') {
-		$result = $c->stash->{w}->getPlaylistTracks( $id ) || [];
-	}
-	elsif ($type eq 'album') {
-		$result = $c->stash->{w}->getAlbumTracks( $id ) || [];
-	}
-	elsif ($type eq 'artist') {
-		$result = $c->stash->{w}->getArtistTracks( $id ) || [];
-	}
-	elsif ($type eq 'mix') {
-		$result = $c->stash->{w}->getMix( $id ) || [];
-	}
-	elsif ($id) {
-		if (my $track = $c->stash->{w}->getTrack( $id )) {
-			$tracks = [ 'wimp://' . $track->{id} . $c->forward( '/api/wimp/v1/opml/getExt', [ $track ] ) ]
-		}
-	}
-
-	$tracks ||= [ grep /.+/, map {
-		$_->{play};
-	} @{$c->forward( '/api/wimp/v1/opml/renderItemList', [ $result || [] ])} ];
-
-	$c->forward( '/api/set_cache', [ 0 ] );
-	$c->res->body( to_json( \@$tracks ) );
-}
-
 
 sub _get {
 	my ( $self, $url, $cb, $params ) = @_;
@@ -637,47 +427,6 @@ sub _get {
 			)->get(BURL . "$url?$query", %headers);
 		}
 	});
-}
-
-sub _authCall {
-	my ( $class, $url, $cb, $params ) = @_;
-
-	my $bearer = encode_base64(sprintf('%s:%s', $cid, $sec));
-	$bearer =~ s/\s//g;
-
-	$params->{client_id} ||= $cid;
-
-	Slim::Networking::SimpleAsyncHTTP->new(
-		sub {
-			my $response = shift;
-
-			my $result = eval { from_json($response->content) };
-
-			$@ && $log->error($@);
-			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
-
-			$cb->($result);
-		},
-		sub {
-			my ($http, $error) = @_;
-
-			$log->warn("Error: $error");
-			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http->contentRef));
-
-			$cb->({
-				error => $error || 'failed auth request'
-			});
-		},
-		{
-			timeout => 15,
-			cache => 0,
-			expiry => 0,
-		}
-	)->post(AURL . $url,
-		'Content-Type' => 'application/x-www-form-urlencoded',
-		'Authorization' => 'Basic ' . $bearer,
-		complex_to_query($params),
-	);
 }
 
 1;
