@@ -24,8 +24,13 @@ my $serverPrefs = preferences('server');
 my $log = logger('plugin.tidal');
 my $cache = Slim::Utils::Cache->new;
 
+# https://tidal.com/browse/track/95570766
+# https://tidal.com/browse/album/95570764
+# https://tidal.com/browse/playlist/5a36919b-251c-4fa7-802c-b659aef04216
 my $URL_REGEX = qr{^https://(?:\w+\.)?tidal.com/(?:browse/)?(track|playlist|album|artist|mix)/([a-z\d-]+)}i;
+my $URI_REGEX = qr{^tidal://(playlist|album|artist|mix|):?([0-9a-z-]+)}i;
 Slim::Player::ProtocolHandlers->registerURLHandler($URL_REGEX, __PACKAGE__);
+Slim::Player::ProtocolHandlers->registerURLHandler($URI_REGEX, __PACKAGE__);
 
 # many method do not need override like isRemote, shouldLoop ...
 sub canSkip { 1 }	# where is this called?
@@ -84,37 +89,49 @@ sub audioScrobblerSource {
 	return 'P';
 }
 
-=comment
 sub explodePlaylist {
 	my ( $class, $client, $url, $cb ) = @_;
 
-	if ( $url =~ $URL_REGEX || $url =~ m{^wimp://(playlist|album|):?([0-9a-z-]+)}i ) {
-		Slim::Networking::SqueezeNetwork->new(
-			sub {
-				my $http = shift;
-				my $opml = eval { from_json( $http->content ) };
+	my ($type, $id) = $url =~ $URL_REGEX;
 
-				return $cb->($opml) if $opml && ref $opml && ref $opml eq 'ARRAY';
+	if ( !($type && $id) ) {
+		($type, $id) = $url =~ $URI_REGEX;
+	}
 
-				$cb->([]);
-			},
-			sub {
-				$cb->([])
-			},
-			{
-				client => $client
+	if ($id) {
+		my $method = 'track';
+
+		if ($type eq 'playlist' || $url =~ /\.tdl/) {
+			$method = 'playlist';
+		}
+		elsif ($type eq 'album') {
+			$method = 'albumTracks';
+		}
+		elsif ($type eq 'artist') {
+			$method = 'artistTracks';
+		}
+		elsif ($type eq 'mix') {
+			$method = 'mix';
+		}
+
+		main::INFOLOG && $log->is_info && $log->info("Getting $url: method: $method, id: $id");
+
+		Plugins::TIDAL::Plugin::getAPIHandler($client)->$method(sub {
+			my $tracks = shift;
+
+			if ($tracks) {
+				$tracks = [ $tracks ] if $method eq 'track';
+				$tracks = [ map { "tidal://$_->{id}." . Plugins::TIDAL::API::getFormat() } @$tracks ];
 			}
-		)->get(
-			Slim::Networking::SqueezeNetwork->url(
-				"/api/wimp/v1/playback/getIdsForURL?url=" . uri_escape_utf8($url),
-			)
-		);
+
+			main::INFOLOG && $log->is_info && $log->info("Got track list: " . Data::Dump::dump($tracks));
+			$cb->($tracks);
+		}, $id);
 	}
 	else {
 		$cb->([]);
 	}
 }
-=cut
 
 sub _gotTrackError {
 	my ( $error, $errorCb ) = @_;
@@ -157,8 +174,7 @@ sub getNextTrack {
 			$song->pluginData(format => $format);
 		}
 
-		main::INFOLOG && $log->info("got $format track at $streamUrl");
-
+		# main::INFOLOG && $log->info("got $format track at $streamUrl");
 		$song->streamUrl($streamUrl);
 
 		# now try to acquire the header for seeking and various details
@@ -239,7 +255,7 @@ sub getMetadataFor {
 
 		main::DEBUGLOG && $log->is_debug && $log->debug("adding metadata query for $trackId");
 
-		Plugins::TIDAL::Plugin::getAPIHandler($client)->tracks(sub {
+		Plugins::TIDAL::Plugin::getAPIHandler($client)->track(sub {
 			my $meta = shift;
 			@pendingMeta = grep { $_->{id} != $trackId } @pendingMeta;
 			return unless $meta;

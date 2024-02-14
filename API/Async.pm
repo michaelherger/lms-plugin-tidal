@@ -67,7 +67,7 @@ sub search {
 	});
 }
 
-sub tracks {
+sub track {
 	my ($self, $cb, $id) = @_;
 
 	$self->_get("/tracks/$id", sub {
@@ -84,6 +84,18 @@ sub artistAlbums {
 		my $artist = shift;
 		my $albums = _filterAlbums($artist->{items}) if $artist;
 		$cb->($albums || []);
+	},{
+		limit => MAX_LIMIT,
+	});
+}
+
+sub artistTracks {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get("/artists/$id/toptracks", sub {
+		my $artist = shift;
+		my $tracks = Plugins::TIDAL::API->cacheTrackMetadata($artist->{items}) if $artist;
+		$cb->($tracks || []);
 	},{
 		limit => MAX_LIMIT,
 	});
@@ -288,7 +300,7 @@ sub getLatestCollectionTimestamp {
 sub getTrackUrl {
 	my ($self, $cb, $id, $params) = @_;
 
-	$params->{_noCache} = 1;
+	$params->{_nocache} = 1;
 
 	$self->_get('/tracks/' . $id . '/playbackinfopostpaywall', sub {
 		$cb->(@_);
