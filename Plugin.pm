@@ -114,7 +114,7 @@ sub handleFeed {
 		url => \&getFavorites,
 		passthrough => [{ type => 'albums' }],
 	},{
-		name => cstring($client, 'PLUGIN_TIDAL_TRACKS'),
+		name => cstring($client, 'TRACKS'),
 		image => 'html/images/playall.png',
 		type => 'link',
 		url => \&getFavorites,
