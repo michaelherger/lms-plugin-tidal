@@ -114,7 +114,7 @@ sub handleFeed {
 		url => \&getFavorites,
 		passthrough => [{ type => 'albums' }],
 	},{
-		name => cstring($client, 'TRACKS'),
+		name => cstring($client, 'PLUGIN_TIDAL_TRACKS'),
 		image => 'html/images/playall.png',
 		type => 'link',
 		url => \&getFavorites,
@@ -149,7 +149,7 @@ sub handleFeed {
 			url   => \&search,
 			passthrough => [ { type => 'albums' } ],
 		},{
-			name => cstring($client, 'TRACKS'),
+			name => cstring($client, 'PLUGIN_TIDAL_TRACKS'),
 			type  => 'search',
 			url   => \&search,
 			passthrough => [ { type => 'tracks' } ],
@@ -587,7 +587,7 @@ sub _renderCategory {
 	} if $item->{hasAlbums};
 
 	push @$items, {
-		name => cstring($client, 'TRACKS'),
+		name => cstring($client, 'PLUGIN_TIDAL_TRACKS'),
 		type  => 'link',
 		url   => $renderer,
 		passthrough => [ { path => $path, type => 'tracks' } ],
