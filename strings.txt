@@ -83,19 +83,10 @@ PLUGIN_TIDAL_MY_MIX
 	IT	I miei Mix
 
 PLUGIN_TIDAL_ARTIST_MIX
-	CS	Mix interpretů
-	DA	Miks baseret på tilfældig kunstner
 	DE	Interpretenmix
 	EN	Artist Mix
-	ES	Mezcla de artistas
-	FI	Artistivalikoima
-	FR	Artistes aléatoires
+	FR	Radio artiste
 	IT	Mix basato sull'artista
-	NL	Artiestenmix
-	NO	Miks fra artister
-	PL	Składanka z różnych wykonawców
-	RU	Микс по исполнителям
-	SV	Artistmix
 
 PLUGIN_TIDAL_TRACK_MIX
 	CS	Mix skladeb

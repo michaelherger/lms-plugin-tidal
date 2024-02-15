@@ -94,12 +94,12 @@ sub handleFeed {
 
 	my $items = [{
 		name => cstring($client, 'PLUGIN_TIDAL_FEATURES'),
-		image => __PACKAGE__->_pluginDataFor('icon'),
+		image => 'plugins/TIDAL/html/featured_MTL_svg_trophy.png',
 		type => 'link',
 		url => \&getFeatured,
 	},{
 		name => cstring($client, 'PLUGIN_TIDAL_MY_MIX'),
-		image => 'plugins/TIDAL/html/mix.png',
+		image => 'plugins/TIDAL/html/mix_MTL_svg_stream.png',
 		type => 'playlist',
 		url => \&getMyMixes,
 	},{
@@ -161,7 +161,7 @@ sub handleFeed {
 		url  => \&getGenres,
 	},{
 		name  => cstring($client, 'PLUGIN_TIDAL_MOODS'),
-		image => __PACKAGE__->_pluginDataFor('icon'),
+		image => 'plugins/TIDAL/html/moods_MTL_icon_celebration.png',
 		type => 'link',
 		url  => \&getMoods,
 	} ];
@@ -416,7 +416,7 @@ sub searchEverything {
 		my $result = shift;
 		my $items = [];
 
-		if ($result->{topHit}) {	
+		if ($result->{topHit}) {
 			$result->{topHit}->{value}->{type} = $result->{topHit}->{type};
 			my $item = _renderItem($client, $result->{topHit}->{value});
 			push @$items, $item if $item;
@@ -432,7 +432,7 @@ sub searchEverything {
 				} @{$result->{$key}->{items}} ],
 			} if $key !~ /videos/ && $result->{$key}->{totalNumberOfItems};
 		}
-		
+
 		$cb->( {
 			items => $items || []
 		} );
