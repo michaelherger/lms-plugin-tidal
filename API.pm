@@ -43,6 +43,8 @@ my $cache = Slim::Utils::Cache->new;
 my $log = logger('plugin.tidal');
 my $prefs = preferences('plugin.tidal');
 
+my $defaultIcon;
+
 sub getSomeUserId {
 	my $accounts = $prefs->get('accounts');
 
@@ -93,7 +95,11 @@ sub getImageUrl {
 		$data->{cover} = $image->{url} if $image;
 	}
 
-	return $data->{cover} || Plugins::TIDAL::Plugin->_pluginDataFor('icon');
+	$defaultIcon ||= Slim::Utils::PluginManager->dataForPlugin(
+		main::SCANNER ? 'Plugins::TIDAL::Importer' : 'Plugins::TIDAL::Plugin'
+	)->{icon};
+
+	return $data->{cover} || $defaultIcon;
 }
 
 sub typeOfItem {
