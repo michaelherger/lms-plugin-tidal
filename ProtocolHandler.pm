@@ -44,7 +44,7 @@ sub getFormatForURL {
 
 sub formatOverride {
 	my ($class, $song) = @_;
-	my $format = $song->pluginData('format') || $class->getFormat;
+	my $format = $song->pluginData('format') || Plugins::TIDAL::API::getFormat;
 	return $format =~ s/mp4/aac/r;
 }
 
@@ -169,8 +169,8 @@ sub getNextTrack {
 		$format =~ s/flac/flc/;
 
 		# this should not happen
-		if ($format ne $class->getFormat) {
-			$log->warn("did not get the expected format for $trackId ($format <> " . Plugins::TIDAL::API->getFormat() . ')');
+		if ($format ne Plugins::TIDAL::API::getFormat) {
+			$log->warn("did not get the expected format for $trackId ($format <> " . Plugins::TIDAL::API::getFormat() . ')');
 			$song->pluginData(format => $format);
 		}
 
@@ -273,7 +273,7 @@ sub getMetadataFor {
 
 	return $meta || {
 		bitrate   => 'N/A',
-		type      => Plugins::TIDAL::API->getFormat(),
+		type      => Plugins::TIDAL::API::getFormat(),
 		icon      => $icon,
 		cover     => $icon,
 	};
@@ -287,15 +287,6 @@ sub getIcon {
 sub _getId {
 	my ($id) = $_[0] =~ m|tidal://(\d+)|;
 	return $id;
-}
-
-sub getFormat {
-	my %quality = (
-		LOW => 'mp4',
-		HIGH => 'mp4',
-		LOSSLESS => 'flc',
-	);
-	return $quality{$prefs->get('quality')};
 }
 
 1;

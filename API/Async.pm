@@ -101,13 +101,17 @@ sub artistTracks {
 	});
 }
 
+# try to remove duplicates
 sub _filterAlbums {
 	my ($albums) = shift || return;
 
-	# TODO - be a bit smarter about removing duplicates
+	my %seen;
 	return [ grep {
-		$_->{audioQuality} !~ /^(?:LOW|HI_RES)$/
-	} @$albums ];
+		scalar (grep /^LOSSLESS$/, @{$_->{mediaMetadata}->{tags} || []}) && !$seen{$_->{fingerprint}}++
+	} map { {
+			%$_,
+			fingerprint => join(':', $_->{artist}->{id}, $_->{title}, $_->{numberOfTracks}),
+	} } @$albums ];
 }
 
 sub featured {
