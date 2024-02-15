@@ -198,7 +198,7 @@ sub selectAccount {
 			}],
 			nextWindow => 'parent'
 		}
-	} values %{ $prefs->get('accounts') || {} } ];
+	} sort values %{ $prefs->get('accounts') || {} } ];
 
 	$cb->({ items => $items });
 }
