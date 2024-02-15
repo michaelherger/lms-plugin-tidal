@@ -447,6 +447,7 @@ sub _renderPlaylist {
 		name => $item->{title},
 		line1 => $item->{title},
 		line2 => join(', ', map { $_->{name} } @{$item->{promotedArtists} || []}),
+		favorites_url => 'tidal://playlist:' . $item->{uuid},
 		type => 'playlist',
 		url => \&getPlaylist,
 		image => Plugins::TIDAL::API->getImageUrl($item),
@@ -472,6 +473,7 @@ sub _renderAlbum {
 		name => $title,
 		line1 => $item->{title},
 		line2 => $item->{artist}->{name},
+		favorites_url => 'tidal://album:' . $item->{id},
 		type => 'playlist',
 		url => \&getAlbum,
 		image => Plugins::TIDAL::API->getImageUrl($item),
@@ -492,13 +494,15 @@ sub _renderTrack {
 
 	my $title = $item->{title};
 	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
+	my $url = "tidal://$item->{id}." . Plugins::TIDAL::API::getFormat();
 
 	return {
 		name => $title,
 		line1 => $item->{title},
 		line2 => $item->{artist}->{name},
 		on_select => 'play',
-		play => "tidal://$item->{id}." . Plugins::TIDAL::API::getFormat(),
+		url => $url,
+		play => $url,
 		playall => 1,
 		image => $item->{cover},
 	};
@@ -522,9 +526,11 @@ sub _renderArtist {
 	}];
 
 	foreach (keys %{$item->{mixes} || {}}) {
+		$log->warn($_) unless /^(?:TRACK|ARTIST)_MIX/;
 		next unless /^(?:TRACK|ARTIST)_MIX/;
 		push @$items, {
 			name => cstring($client, "PLUGIN_TIDAL_$_"),
+			favorites_url => 'tidal://mix:' . $item->{mixes}->{$_},
 			type => 'playlist',
 			url => \&getMix,
 			passthrough => [{ id => $item->{mixes}->{$_} }],
@@ -552,6 +558,7 @@ sub _renderMix {
 		name => $item->{title},
 		line1 => $item->{title},
 		line2 => join(', ', map { $_->{name} } @{$item->{artists}}),
+		favorites_url => 'tidal://mix:' . $item->{id},
 		type => 'playlist',
 		url => \&getMix,
 		image => Plugins::TIDAL::API->getImageUrl($item),

@@ -38,7 +38,7 @@ sub canSeek { 1 }
 
 sub getFormatForURL {
 	my ($class, $url) = @_;
-	return if $url =~ /\.tdl$/;
+	return if $url =~ m{^tidal://.+:.+};
 	return Plugins::TIDAL::API::getFormat();
 }
 
@@ -101,7 +101,7 @@ sub explodePlaylist {
 	if ($id) {
 		my $method = 'track';
 
-		if ($type eq 'playlist' || $url =~ /\.tdl/) {
+		if ($type eq 'playlist') {
 			$method = 'playlist';
 		}
 		elsif ($type eq 'album') {
