@@ -262,7 +262,7 @@ sub needsUpdate { if (!main::SCANNER) {
 	my $checkFav = sub {
 		my ($userId, $type, $previous, $acb) = @_;
 
-		my $api = Plugins::TIDAL::API::Async->new({
+		Plugins::TIDAL::API::Async->new({
 			userId => $userId
 		})->getLatestCollectionTimestamp(sub {
 			my $timestamp = shift;
@@ -277,9 +277,9 @@ sub needsUpdate { if (!main::SCANNER) {
 			sub { $checkFav->($userId, 'artists', @_) },
 		);
 
-		# if (!$class->_ignorePlaylists) {
+		if (!$class->ignorePlaylists) {
 			push @tasks, sub { $checkFav->($userId, 'playlists', @_) };
-		# }
+		}
 
 		@tasks;
 	} sort {
