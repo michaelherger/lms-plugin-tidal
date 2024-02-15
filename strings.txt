@@ -90,7 +90,7 @@ PLUGIN_TIDAL_ARTIST_MIX
 	ES	Mezcla de artistas
 	FI	Artistivalikoima
 	FR	Artistes aléatoires
-	IT	Raccolta di artisti
+	IT	Mix basato sull'artista
 	NL	Artiestenmix
 	NO	Miks fra artister
 	PL	Składanka z różnych wykonawców
@@ -105,7 +105,7 @@ PLUGIN_TIDAL_TRACK_MIX
 	ES	Mezcla de canciones
 	FI	Kappalevalikoima
 	FR	Morceaux aléatoires
-	IT	Raccolta di brani
+	IT	Mix basato sul brano
 	NL	Nummermix
 	NO	Sangmiks
 	PL	Składanka utworów
@@ -133,6 +133,7 @@ PLUGIN_TIDAL_ALBUMS_PROGRESS
 	DE	TIDAL Alben
 	EN	TIDAL Albums
 	FR	TIDAL Albums
+	IT	TIDAL Albums
 	NL	TIDAL Albums
 
 PLUGIN_TIDAL_PROGRESS_READ_ALBUMS
@@ -148,6 +149,7 @@ PLUGIN_TIDAL_ARTISTS_PROGRESS
 	DE	TIDAL Interpreten
 	EN	TIDAL Artists
 	FR	TIDAL Artistes
+	IT	TIDAL Artist
 	NL	TIDAL Artiesten
 
 PLUGIN_TIDAL_PROGRESS_READ_ARTISTS
@@ -163,6 +165,7 @@ PLUGIN_TIDAL_PLAYLISTS_PROGRESS
 	DE	TIDAL Wiedergabelisten
 	EN	TIDAL Playlists
 	FR	TIDAL Listes de lecture
+	IT	TIDAL Playlists
 	NL	TIDAL Afspeellijsten
 
 PLUGIN_TIDAL_PROGRESS_READ_PLAYLISTS
@@ -177,4 +180,5 @@ PLUGIN_TIDAL_TOPHIT
 	DE	Top-Hit
 	EN	Top Hit
 	FR	Meilleur classement
+	IT	Top Hit
 
