@@ -6,15 +6,14 @@ use Date::Parse qw(str2time);
 use JSON::XS::VersionOneAndTwo;
 use List::Util qw(min);
 
+use Slim::Networking::SimpleSyncHTTP;
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
-# use Slim::Utils::Prefs;
 
 use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT MAX_LIMIT);
 
 my $cache = Slim::Utils::Cache->new();
 my $log = logger('plugin.tidal');
-# my $prefs = preferences('plugin.tidal');
 
 sub getFavorites {
 	my ($class, $userId, $type) = @_;
