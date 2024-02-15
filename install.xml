@@ -8,7 +8,7 @@
   <description>PLUGIN_TIDAL_NAME</description>
   <icon>plugins/TIDAL/html/tidal.png</icon>
   <creator>Michael Herger</creator>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <targetApplication>
     <minVersion>8.3.0</minVersion>
     <maxVersion>*</maxVersion>
