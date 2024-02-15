@@ -423,14 +423,18 @@ sub searchEverything {
 		}
 
 		foreach my $key (sort keys %$result) {
+			next if $key =~ /videos/ || !$result->{$key}->{totalNumberOfItems};
+
+			my $entries = $key ne 'tracks' ?
+						  $result->{$key}->{items} :
+						  Plugins::TIDAL::API->cacheTrackMetadata($result->{$key}->{items});
+
 			push @$items, {
 				name => cstring($client, $key =~ s/tracks/songs/r),
 				image => 'html/images/' . ($key ne 'tracks' ? $key : 'playall') . '.png',
 				type => 'outline',
-				items => [ map {
-					_renderItem($client, $_);
-				} @{$result->{$key}->{items}} ],
-			} if $key !~ /videos/ && $result->{$key}->{totalNumberOfItems};
+				items => [ map { _renderItem($client, $_) } @$entries ],
+			}
 		}
 
 		$cb->( {
@@ -537,7 +541,7 @@ sub _renderTrack {
 		url => $url,
 		play => $url,
 		playall => 1,
-		image => $item->{cover} || Plugins::TIDAL::API->getImageUrl($item),
+		image => $item->{cover},
 	};
 }
 
