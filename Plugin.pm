@@ -132,7 +132,7 @@ sub handleFeed {
 		items => [{
 			name => cstring($client, 'EVERYTHING'),
 			type  => 'search',
-			url   => \&search,
+			url   => \&searchEverything,
 		},{
 			name => cstring($client, 'PLAYLISTS'),
 			type  => 'search',
@@ -407,6 +407,39 @@ sub search {
 
 }
 
+sub searchEverything {
+	my ($client, $cb, $args, $params) = @_;
+
+	$args->{search} ||= $params->{query};
+
+	getAPIHandler($client)->search(sub {
+		my $result = shift;
+		my $items = [];
+
+		if ($result->{topHit}) {	
+			$result->{topHit}->{value}->{type} = $result->{topHit}->{type};
+			my $item = _renderItem($client, $result->{topHit}->{value});
+			push @$items, $item if $item;
+		}
+
+		foreach my $key (sort keys %$result) {
+			push @$items, {
+				name => cstring($client, $key =~ s/tracks/songs/r),
+				image => 'html/images/' . ($key ne 'tracks' ? $key : 'playall') . '.png',
+				type => 'outline',
+				items => [ map {
+					_renderItem($client, $_);
+				} @{$result->{$key}->{items}} ],
+			} if $key !~ /videos/ && $result->{$key}->{totalNumberOfItems};
+		}
+		
+		$cb->( {
+			items => $items || []
+		} );
+	}, $args);
+
+}
+
 sub _renderItem {
 	my ($client, $item, $args) = @_;
 
@@ -504,7 +537,7 @@ sub _renderTrack {
 		url => $url,
 		play => $url,
 		playall => 1,
-		image => $item->{cover},
+		image => $item->{cover} || Plugins::TIDAL::API->getImageUrl($item),
 	};
 }
 

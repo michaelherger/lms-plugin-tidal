@@ -58,7 +58,7 @@ sub search {
 	$self->_get('/search' . ($args->{type} || ''), sub {
 		my $result = shift;
 
-		my $items = $result->{items} if $result && ref $result;
+		my $items = $args->{type} ? $result->{items} : $result if $result && ref $result;
 		$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $args->{type} =~ /tracks/;
 
 		$cb->($items);

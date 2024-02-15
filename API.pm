@@ -93,7 +93,7 @@ sub getImageUrl {
 		$data->{cover} = $image->{url} if $image;
 	}
 
-	return $data->{cover};
+	return $data->{cover} || Plugins::TIDAL::Plugin->_pluginDataFor('icon');
 }
 
 sub typeOfItem {

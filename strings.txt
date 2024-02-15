@@ -173,3 +173,7 @@ PLUGIN_TIDAL_PROGRESS_READ_PLAYLISTS
 	IT	Recupero le playlists (%s)...
 	NL	Afspeellijsten ophalen (%s)...
 
+PLUGIN_TIDAL_TOPHIT
+	EN	Top Hit
+	FR	Meilleur classement
+
