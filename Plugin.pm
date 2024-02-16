@@ -65,6 +65,18 @@ sub postinitPlugin {
 		# 	};
 		# } );
 	}
+
+	if ( Slim::Utils::PluginManager->isEnabled('Plugins::LastMix::Plugin') ) {
+		eval {
+			require Plugins::LastMix::Services;
+		};
+
+		if (!$@) {
+			main::INFOLOG && $log->info("LastMix plugin is available - let's use it!");
+			require Plugins::TIDAL::LastMix;
+			Plugins::LastMix::Services->registerHandler('Plugins::TIDAL::LastMix', 'lossless');
+		}
+	}
 }
 
 sub onlineLibraryNeedsUpdate {
@@ -73,12 +85,11 @@ sub onlineLibraryNeedsUpdate {
 	return Plugins::TIDAL::Importer->needsUpdate(@_);
 }
 
-# TODO
-# sub getLibraryStats {
-# 	require Plugins::TIDAL::Importer;
-# 	my $totals = Plugins::TIDAL::Importer->getLibraryStats();
-# 	return wantarray ? ('PLUGIN_TIDAL_MODULE_NAME', $totals) : $totals;
-# }
+sub getLibraryStats {
+	require Plugins::TIDAL::Importer;
+	my $totals = Plugins::TIDAL::Importer->getLibraryStats();
+	return wantarray ? ('PLUGIN_TIDAL_NAME', $totals) : $totals;
+}
 
 sub handleFeed {
 	my ($client, $cb, $args) = @_;
@@ -394,7 +405,7 @@ sub search {
 	my ($client, $cb, $args, $params) = @_;
 
 	$args->{search} ||= $params->{query};
-	$args->{type} = "/$params->{type}";
+	$args->{type} = $params->{type};
 
 	getAPIHandler($client)->search(sub {
 		my $items = shift;
