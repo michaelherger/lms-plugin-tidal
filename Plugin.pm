@@ -360,7 +360,7 @@ sub getMoods {
 				name => $_->{name},
 				type => 'link',
 				url => \&getMoodPlaylists,
-				image => Plugins::TIDAL::API->getImageUrl($_, 'mood'),
+				image => Plugins::TIDAL::API->getImageUrl($_, 'usePlaceholder', 'mood'),
 				passthrough => [ { mood => $_->{path} } ],
 			};
 		} @{$_[0]} ];
@@ -513,7 +513,7 @@ sub _renderAlbum {
 		favorites_url => 'tidal://album:' . $item->{id},
 		type => 'playlist',
 		url => \&getAlbum,
-		image => Plugins::TIDAL::API->getImageUrl($item),
+		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 		passthrough => [{ id => $item->{id} }],
 	};
 }
@@ -579,12 +579,12 @@ sub _renderArtist {
 		name => $item->{name},
 		type => 'outline',
 		items => $items,
-		image => Plugins::TIDAL::API->getImageUrl($item),
+		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 	}
 	: {
 		%{$items->[0]},
 		name => $item->{name},
-		image => Plugins::TIDAL::API->getImageUrl($item),
+		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 	};
 }
 
@@ -598,7 +598,7 @@ sub _renderMix {
 		favorites_url => 'tidal://mix:' . $item->{id},
 		type => 'playlist',
 		url => \&getMix,
-		image => Plugins::TIDAL::API->getImageUrl($item),
+		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 		passthrough => [{ id => $item->{id} }],
 	};
 }
@@ -641,7 +641,7 @@ sub _renderCategory {
 		name => $item->{name},
 		type => 'outline',
 		items => $items,
-		image => Plugins::TIDAL::API->getImageUrl($item, 'genre'),
+		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder', 'genre'),
 		passthrough => [ { path => $item->{path} } ],
 	};
 }

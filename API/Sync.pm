@@ -76,7 +76,7 @@ sub getArtist {
 	my ($class, $userId, $id) = @_;
 
 	my $artist = $class->_get("/artists/$id", $userId);
-	$artist->{cover} = Plugins::TIDAL::API->getImageUrl($artist, 'artist') if $artist && $artist->{picture};
+	$artist->{cover} = Plugins::TIDAL::API->getImageUrl($artist) if $artist && $artist->{picture};
 	return $artist;
 }
 
