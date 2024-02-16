@@ -282,6 +282,17 @@ sub getArtistAlbums {
 	}, $params->{id});
 }
 
+sub getArtistTopTracks {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->artistTopTracks(sub {
+		my $items = _renderTracks(@_);
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{id});
+}
+
 sub getMyMixes {
 	my ( $client, $cb ) = @_;
 
@@ -568,6 +579,10 @@ sub _renderArtist {
 	my ($client, $item) = @_;
 
 	my $items = [{
+		name => cstring($client, 'PLUGIN_TIDAL_TOP_TRACKS'),
+		url => \&getArtistTopTracks,
+		passthrough => [{ id => $item->{id} }],
+	}, {
 		name => cstring($client, 'ALBUMS'),
 		url => \&getArtistAlbums,
 		passthrough => [{ id => $item->{id} }],

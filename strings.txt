@@ -190,3 +190,17 @@ PLUGIN_TIDAL_PROGRESS_READ_PLAYLISTS
 	IT	Recupero le playlists (%s)...
 	NL	Afspeellijsten ophalen (%s)...
 
+PLUGIN_TIDAL_TOP_TRACKS
+	CS	Nejlepší skladby
+	DA	Mest populære numre
+	DE	Top-Titel
+	EN	Top Tracks
+	ES	Pistas principales
+	FI	Suositut kappaleet
+	FR	Morceaux les plus écoutés
+	IT	Brani più ascoltati
+	NL	Topnummers
+	NO	Mest populære spor
+	PL	Najczęściej słuchane
+	RU	Лучшие дорожки
+	SV	Toppspår	

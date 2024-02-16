@@ -93,7 +93,7 @@ sub artistAlbums {
 	});
 }
 
-sub artistTracks {
+sub artistTopTracks {
 	my ($self, $cb, $id) = @_;
 
 	$self->_get("/artists/$id/toptracks", sub {
