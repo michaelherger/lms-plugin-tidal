@@ -85,12 +85,11 @@ sub onlineLibraryNeedsUpdate {
 	return Plugins::TIDAL::Importer->needsUpdate(@_);
 }
 
-# TODO
-# sub getLibraryStats {
-# 	require Plugins::TIDAL::Importer;
-# 	my $totals = Plugins::TIDAL::Importer->getLibraryStats();
-# 	return wantarray ? ('PLUGIN_TIDAL_MODULE_NAME', $totals) : $totals;
-# }
+sub getLibraryStats {
+	require Plugins::TIDAL::Importer;
+	my $totals = Plugins::TIDAL::Importer->getLibraryStats();
+	return wantarray ? ('PLUGIN_TIDAL_NAME', $totals) : $totals;
+}
 
 sub handleFeed {
 	my ($client, $cb, $args) = @_;
