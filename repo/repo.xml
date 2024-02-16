@@ -5,7 +5,10 @@
       <sha>319f446d0905add2dfdadcc2dee108219450c9d5</sha>
       <desc lang="EN">TIDAL for local LMS use</desc>
       <title lang="EN">TIDAL local</title>
+      <creator>philippe_44, Michael Herger</creator>
+      <link>https://github.com/michaelherger/lms-plugin-tidal</link>
       <url>https://github.com/michaelherger/lms-plugin-tidal/releases/download/0.4.0/TIDAL.zip</url>
+      <category>musicservices</category>
     </plugin>
   </plugins>
 </extensions>

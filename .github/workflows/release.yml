@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set Version
@@ -16,7 +16,7 @@ jobs:
         run:
           echo "version=`egrep -o "version>(.*)</version" install.xml | egrep -o \"[0-9.]*\"`" >> $GITHUB_OUTPUT
 
-      - name: Zip repository
+      - name: Zip Repository
         id: zip
         run: zip TIDAL -r API *.pm HTML Settings install.xml strings.txt README.md
 
@@ -30,12 +30,12 @@ jobs:
           url="https://github.com/${{ github.repository }}/releases/download/${{ steps.set-version.outputs.version }}"
           perl repo/release.pl repo/repo.xml ${{ steps.set-version.outputs.version }} TIDAL.zip $url
 
-      - name: Update file
+      - name: Update Repository
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add repo/repo.xml
-          git commit -m "update repo.xml for release ${{ steps.set-version.outputs.version }}"
+          git commit -m "Update repo.xml for release ${{ steps.set-version.outputs.version }}"
           git push origin HEAD:main
 
       - name: Create Release
@@ -45,7 +45,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.set-version.outputs.version }}
-          name: version ${{ steps.set-version.outputs.version }}
+          name: Version ${{ steps.set-version.outputs.version }}
           body: TIDAL plugin release
           draft: false
           prerelease: false
