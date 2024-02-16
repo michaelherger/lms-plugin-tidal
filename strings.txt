@@ -3,6 +3,7 @@ PLUGIN_TIDAL_NAME
 
 PLUGIN_TIDAL_ADD_ACCOUNT
 	CS	Přidat účet
+	DA	Tilføj konto
 	DE	Konto hinzufügen
 	EN	Add Account
 	FR	Ajouter un compte
@@ -11,6 +12,7 @@ PLUGIN_TIDAL_ADD_ACCOUNT
 
 PLUGIN_TIDAL_AUTH
 	CS	Autorizace TIDAL
+	DA	Autoriser TIDAL
 	DE	TIDAL Anmeldung
 	EN	TIDAL Authorization
 	FR	Autorisation TIDAL
@@ -19,6 +21,7 @@ PLUGIN_TIDAL_AUTH
 
 PLUGIN_TIDAL_IMPORT_LIBRARY
 	CS	Importovat
+	DA	Importer
 	DE	Importieren
 	EN	Import
 	FR	Importer
@@ -41,12 +44,14 @@ PLUGIN_TIDAL_ACCOUNT
 	SV	Konto
 
 PLUGIN_TIDAL_FOLLOW_LINK
+	DA	Det efterfølgende link tager dig til TIDAL for at autorisere. Her skal du give Logitech Media Server adgang til din TIDAL konto. Efter du er logget på, så kom tilbage hertil:  
 	DE	Der folgende Link führt Sie zu TIDAL zur Authentifizierung. Bitte folgen Sie ihm, um dem Logitech Media Server Zugriff auf Ihr TIDAL-Konto zu gewähren. Sobald Sie die Anmeldung abgeschlossen haben, kommen Sie hierher zurück:
 	EN	The following link takes you to TIDAL for authentication. Please follow it grant Logitech Media Server access to your TIDAL account. Once you've completed sign-in come back here:
 	FR	Le lien suivant vous mènera à TIDAL pour authentification. Veuillez le suivre pour accorder à Logitech Media Server l'accès à votre compte TIDAL. Une fois votre inscription terminée, revenez ici :
 	IT	Il seguente link reindirizza all'autenticazione di TIDAL. Per favore, garantisci l'accesso al tuo account TIDAL a Logitech Media Server e torna in questa pagina una volta completato il login.
 
 PLUGIN_TIDAL_REQUIRES_CREDENTIALS
+	DA	Gå til Settings/advanced/TIDAL for at autorisere med TIDAL
 	DE	Bitte melden Sie sich in den Server-Einstellungen unter Erweitert/TIDAL an TIDAL an.
 	EN	Please go to Settings/Advanced/TIDAL to authenticate with TIDAL.
 	FR	Veuillez vous connecter à TIDAL en accédant aux réglages du plugin TIDAL (paramètres/avancé/TIDAL ou préférences/serveur/TIDAL).
@@ -68,24 +73,28 @@ PLUGIN_TIDAL_SELECT_ACCOUNT
 	SV	Välj konto
 
 PLUGIN_TIDAL_QUALITY
+	DA	Kvalitet
 	DE	Qualität
 	EN	Quality
 	FR	Qualité
 	IT	Qualità
 
 PLUGIN_TIDAL_QUALITY_DESC
+	DA	Streaming kvalitet
 	DE	Stream Qualität
 	EN	Streaming quality
 	FR	Qualité du streaming
 	IT	Qualità dello streaming
 
 PLUGIN_TIDAL_MY_MIX
+	DA	Mit Miks
 	DE	Mein Mix
 	EN	My Mix
 	FR	My Mix
 	IT	I miei Mix
 
 PLUGIN_TIDAL_ARTIST_MIX
+	DA	Artist Miks
 	DE	Interpretenmix
 	EN	Artist Mix
 	FR	Radio artiste
@@ -107,6 +116,7 @@ PLUGIN_TIDAL_TRACK_MIX
 	SV	Låtmix
 
 PLUGIN_TIDAL_MOODS
+	DA 	Stemninger
 	DE	Stimmungen
 	EN	Moods
 	FR	Ambiances
@@ -124,6 +134,7 @@ PLUGIN_TIDAL_FEATURES
 
 PLUGIN_TIDAL_ALBUMS_PROGRESS
 	CS	Alba TIDALu
+	DA	TIDAL Album
 	DE	TIDAL Alben
 	EN	TIDAL Albums
 	FR	Albums TIDAL
@@ -132,6 +143,7 @@ PLUGIN_TIDAL_ALBUMS_PROGRESS
 
 PLUGIN_TIDAL_PROGRESS_READ_ALBUMS
 	CS	Načítání alb (%s)...
+	DA	Henter Album (%s)...
 	DE	Lese Alben (%s)...
 	EN	Fetching Albums (%s)...
 	FR	Récupération des albums (%s)...
@@ -140,6 +152,7 @@ PLUGIN_TIDAL_PROGRESS_READ_ALBUMS
 
 PLUGIN_TIDAL_ARTISTS_PROGRESS
 	CS	Interpeti TIDALu
+	DA	Tidal Artister
 	DE	TIDAL Interpreten
 	EN	TIDAL Artists
 	FR	Artistes TIDAL
@@ -148,6 +161,7 @@ PLUGIN_TIDAL_ARTISTS_PROGRESS
 
 PLUGIN_TIDAL_PROGRESS_READ_ARTISTS
 	CS	Načítání interpetů (%s)...
+	DA	Henter Artister (%s)...
 	DE	Lese Interpreten (%s)...
 	EN	Fetching Artists (%s)...
 	FR	Récupération des artistes (%s)...
@@ -156,6 +170,7 @@ PLUGIN_TIDAL_PROGRESS_READ_ARTISTS
 
 PLUGIN_TIDAL_PLAYLISTS_PROGRESS
 	CS	Seznamy skladeb TIDALu
+	DA	TIDAL Afspilningslister
 	DE	TIDAL Wiedergabelisten
 	EN	TIDAL Playlists
 	FR	Listes de lecture TIDAL
@@ -164,6 +179,7 @@ PLUGIN_TIDAL_PLAYLISTS_PROGRESS
 
 PLUGIN_TIDAL_PROGRESS_READ_PLAYLISTS
 	CS	Získávání seznamů skladeb (%s)...
+	DA	Henter Afspilningslister (%s)...
 	DE	Lese Wiedergabelisten (%s)...
 	EN	Fetching Playlists (%s)...
 	FR	Récupération des listes de lecture (%s)...
