@@ -55,7 +55,10 @@ sub new {
 sub search {
 	my ($self, $cb, $args) = @_;
 
-	$self->_get('/search' . ($args->{type} || ''), sub {
+	my $type = $args->{type} || '';
+	$type = "/$type" if $type && $type !~ m{^/};
+
+	$self->_get('/search' . $type, sub {
 		my $result = shift;
 
 		my $items = $args->{type} ? $result->{items} : $result if $result && ref $result;
@@ -63,6 +66,7 @@ sub search {
 
 		$cb->($items);
 	}, {
+		limit => $args->{limit},
 		query => $args->{search}
 	});
 }

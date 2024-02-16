@@ -65,6 +65,18 @@ sub postinitPlugin {
 		# 	};
 		# } );
 	}
+
+	if ( Slim::Utils::PluginManager->isEnabled('Plugins::LastMix::Plugin') ) {
+		eval {
+			require Plugins::LastMix::Services;
+		};
+
+		if (!$@) {
+			main::INFOLOG && $log->info("LastMix plugin is available - let's use it!");
+			require Plugins::TIDAL::LastMix;
+			Plugins::LastMix::Services->registerHandler('Plugins::TIDAL::LastMix', 'lossless');
+		}
+	}
 }
 
 sub onlineLibraryNeedsUpdate {
@@ -394,7 +406,7 @@ sub search {
 	my ($client, $cb, $args, $params) = @_;
 
 	$args->{search} ||= $params->{query};
-	$args->{type} = "/$params->{type}";
+	$args->{type} = $params->{type};
 
 	getAPIHandler($client)->search(sub {
 		my $items = shift;
