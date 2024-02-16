@@ -37,6 +37,7 @@ use constant SOUND_QUALITY => {
 	LOW => 'mp4',
 	HIGH => 'mp4',
 	LOSSLESS => 'flc',
+	HI_RES_LOSSLESS => 'flc',
 };
 
 my $cache = Slim::Utils::Cache->new;
