@@ -9,39 +9,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set Version
         id: set-version
-        uses: actions/github-script@v6
-        with:
-            script: |
-              const fs = require('fs');
-              const xml = fs.readFileSync('install.xml', 'utf8');
-              const version = xml.match(/<version>([^<]+)<\/version>/)[1];
-              console.log(`::set-output name=version::${version}`);
-        
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.set-version.outputs.version }}
-          release_name: version ${{ steps.set-version.outputs.version }}
-          body: TIDAL plugin release
-          draft: false
-          prerelease: false
+        run:
+          echo "version=`egrep -o "version>(.*)</version" install.xml | egrep -o \"[0-9.]*\"`" >> $GITHUB_OUTPUT
 
       - name: Zip repository
         id: zip
         run: zip TIDAL -r API *.pm HTML Settings install.xml
 
       - name: Setup Perl
-        uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: '5.34'
-          install-modules: XML::Simple Digest::SHA1       
+        run: |
+          sudo apt-get install -y libxml-simple-perl libdigest-sha-perl
 
       - name: Update SHA and Version in repo.xml
         id: tag
@@ -56,17 +37,17 @@ jobs:
           git add repo/repo.xml
           git commit -m "update repo.xml for release ${{ steps.set-version.outputs.version }}"
           git push origin HEAD:main
-          
-      - name: Upload Release Asset
-        id: upload-release-asset 
-        uses: actions/upload-release-asset@v1
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} 
-          asset_path: ./TIDAL.zip
-          asset_name: TIDAL.zip
-          asset_content_type: application/zip
-          
+          tag_name: ${{ steps.set-version.outputs.version }}
+          name: version ${{ steps.set-version.outputs.version }}
+          body: TIDAL plugin release
+          draft: false
+          prerelease: false
+          files: TIDAL.zip
 
-      
