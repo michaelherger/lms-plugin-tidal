@@ -18,7 +18,7 @@ jobs:
 
       - name: Zip repository
         id: zip
-        run: zip TIDAL -r API *.pm HTML Settings install.xml
+        run: zip TIDAL -r API *.pm HTML Settings install.xml strings.txt README.md
 
       - name: Setup Perl
         run: |
