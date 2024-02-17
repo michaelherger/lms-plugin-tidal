@@ -7,7 +7,6 @@ use URI::Escape qw(uri_escape_utf8);
 use Scalar::Util qw(blessed);
 use MIME::Base64 qw(encode_base64 decode_base64);
 
-use Slim::Networking::SqueezeNetwork;
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Misc;
