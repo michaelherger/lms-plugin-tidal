@@ -193,22 +193,6 @@ sub getNextTrack {
 	main::DEBUGLOG && $log->is_debug && $log->debug("Getting next track playback info for $url");
 }
 
-=comment
-# URL used for CLI trackinfo queries
-sub trackInfoURL {
-	my ( $class, $client, $url ) = @_;
-
-	my ($trackId) = _getStreamParams( $url );
-
-	# SN URL to fetch track info menu
-	my $trackInfoURL = Slim::Networking::SqueezeNetwork->url(
-		'/api/wimp/v1/opml/trackinfo?trackId=' . $trackId
-	);
-
-	return $trackInfoURL;
-}
-=cut
-
 my @pendingMeta = ();
 
 sub getMetadataFor {

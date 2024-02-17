@@ -51,7 +51,7 @@ sub postinitPlugin {
 	my $class = shift;
 
 	if ( Slim::Utils::PluginManager->isEnabled('Slim::Plugin::OnlineLibrary::Plugin') ) {
-		Slim::Plugin::OnlineLibrary::Plugin->addLibraryIconProvider('wimp', '/plugins/TIDAL/html/emblem.png');
+		Slim::Plugin::OnlineLibrary::Plugin->addLibraryIconProvider('tidal', '/plugins/TIDAL/html/emblem.png');
 
 	# TODO
 		# Slim::Plugin::OnlineLibrary::BrowseArtist->registerBrowseArtistItem( TIDAL => sub {

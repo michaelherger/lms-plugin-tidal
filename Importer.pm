@@ -4,23 +4,11 @@ use strict;
 
 use base qw(Slim::Plugin::OnlineLibraryBase);
 
-use Date::Parse qw(str2time);
-use Digest::MD5 qw(md5_hex);
-use JSON::XS::VersionOneAndTwo;
-use List::Util qw(max);
-
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Progress;
 use Slim::Utils::Strings qw(string);
-
-use constant ACCOUNTS_URL  => '/api/wimp/v1/opml/library/getAccounts';
-use constant ALBUMS_URL    => '/api/wimp/v1/opml/library/myAlbums?account=%s';
-use constant ARTISTS_URL   => '/api/wimp/v1/opml/library/myArtists?account=%s';
-use constant ARTIST_URL    => '/api/wimp/v1/opml/library/getArtist?id=%s';
-use constant PLAYLISTS_URL => '/api/wimp/v1/opml/library/myPlaylists?account=%s';
-use constant FINGERPRINT_URL => '/api/wimp/v1/opml/library/fingerprint';
 
 my $cache = Slim::Utils::Cache->new();
 my $log = logger('plugin.tidal');
