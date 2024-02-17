@@ -4,7 +4,7 @@
   <description>PLUGIN_TIDAL_DESC</description>
   <creator>philippe_44, Michael Herger</creator>
   <id>16da8158-263f-4347-8125-184372ea5610</id>
-  <version>0.6.0</version>
+  <version>0.6.1</version>
   <module>Plugins::TIDAL::Plugin</module>
   <importmodule>Plugins::TIDAL::Importer</importmodule>
   <optionsURL>plugins/TIDAL/settings.html</optionsURL>
