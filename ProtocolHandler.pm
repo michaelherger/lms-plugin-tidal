@@ -98,34 +98,25 @@ sub explodePlaylist {
 	}
 
 	if ($id) {
-		my $method = 'track';
+		my $method;
+
+		return $cb->( [ $url ] ) if !$type;
 
 		if ($type eq 'playlist') {
-			$method = 'playlist';
+			$method = \&Plugins::TIDAL::Plugin::getPlaylist;
 		}
 		elsif ($type eq 'album') {
-			$method = 'albumTracks';
+			$method = \&Plugins::TIDAL::Plugin::getAlbum;
 		}
 		elsif ($type eq 'artist') {
-			$method = 'artistTracks';
+			$method = \&Plugins::TIDAL::Plugin::getArtistTopTracks;
 		}
 		elsif ($type eq 'mix') {
-			$method = 'mix';
+			$method = \&Plugins::TIDAL::Plugin::getMix;
 		}
 
+		$method->($client, $cb, { }, { id => $id });
 		main::INFOLOG && $log->is_info && $log->info("Getting $url: method: $method, id: $id");
-
-		Plugins::TIDAL::Plugin::getAPIHandler($client)->$method(sub {
-			my $tracks = shift;
-
-			if ($tracks) {
-				$tracks = [ $tracks ] if $method eq 'track';
-				$tracks = [ map { "tidal://$_->{id}." . Plugins::TIDAL::API::getFormat() } @$tracks ];
-			}
-
-			main::INFOLOG && $log->is_info && $log->info("Got track list: " . Data::Dump::dump($tracks));
-			$cb->($tracks);
-		}, $id);
 	}
 	else {
 		$cb->([]);
