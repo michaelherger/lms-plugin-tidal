@@ -1,14 +1,14 @@
 <?xml version='1.0' standalone='yes'?>
 <extensions>
   <plugins>
-    <plugin name="TIDAL" maxTarget="*" version="0.6.2" minTarget="8.3">
-      <url>https://github.com/michaelherger/lms-plugin-tidal/releases/download/0.6.2/TIDAL.zip</url>
-      <title lang="EN">TIDAL local</title>
-      <sha>f9d741625c174aa92e4d2a700f29280d762ad580</sha>
-      <category>musicservices</category>
+    <plugin name="TIDAL" version="0.6.3" minTarget="8.3" maxTarget="*">
       <desc lang="EN">TIDAL for local LMS use</desc>
+      <sha>ae0064d887e213f1808c8727a90109bc55a2bb1a</sha>
       <link>https://github.com/michaelherger/lms-plugin-tidal</link>
+      <title lang="EN">TIDAL local</title>
       <creator>philippe_44, Michael Herger</creator>
+      <category>musicservices</category>
+      <url>https://github.com/michaelherger/lms-plugin-tidal/releases/download/0.6.3/TIDAL.zip</url>
     </plugin>
   </plugins>
 </extensions>
