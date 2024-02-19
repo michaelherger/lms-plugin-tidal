@@ -2,6 +2,7 @@ PLUGIN_TIDAL_NAME
 	EN	TIDAL
 
 PLUGIN_TIDAL_DESC
+	DA	TIDAL plugin for LMS, som ikke kræver MySqueezebox.com.
 	DE	TIDAL Plugin zur Integration mit LMS, ohne Verbindung zu MySqueezebox.com.
 	EN	TIDAL Plugin for LMS, does not depend on MySqueezebox.com.
 
