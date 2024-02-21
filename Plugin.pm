@@ -189,11 +189,15 @@ sub handleFeed {
 }
 
 sub selectAccount {
-	my $cb = $_[1];
+	my ( $client, $cb ) = @_;
 
+	my $userId = getAPIHandler($client)->userId;
 	my $items = [ map {
+		my $name = $_->{nickname} || $_->{username};
+		$name = '* ' . $name if $_->{userId} == $userId;
+
 		{
-			name => $_->{nickname} || $_->{username},
+			name => $name,
 			url => sub {
 				my ($client, $cb2, $params, $args) = @_;
 
