@@ -274,6 +274,7 @@ sub getFavorites {
 			$cb->($items);
 		},{
 			_ttl => USER_CONTENT_TTL,
+			_nocache => 1,
 			limit => MAX_LIMIT,
 		});
 	};
