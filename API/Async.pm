@@ -278,7 +278,7 @@ sub getFavorites {
 		});
 	};
 
-	# use cached data unless the collection has changed or is small anyway
+	# use cached data unless the collection has changed
 	my $cached = $cache->get($cacheKey);
 	if ($cached && ref $cached->{items}) {
 		# don't bother verifying timestamp when drilling down
