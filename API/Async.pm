@@ -252,7 +252,7 @@ sub playlist {
 # lookup to get the latest timestamp first, then return from cache directly
 # if the list hasn't changed, or look up afresh if needed.
 sub getFavorites {
-	my ($self, $cb, $type) = @_;
+	my ($self, $cb, $type, $drill) = @_;
 
 	return $cb->() unless $type;
 
@@ -280,7 +280,10 @@ sub getFavorites {
 
 	# use cached data unless the collection has changed or is small anyway
 	my $cached = $cache->get($cacheKey);
-	if ($cached && ref $cached->{items} && scalar @{$cached->{items}} > DEFAULT_LIMIT) {
+	if ($cached && ref $cached->{items}) {
+		# don't bother verifying timestamp when drilling down
+		return $cb->($cached->{items}) if $drill;
+		
 		$self->getLatestCollectionTimestamp(sub {
 			my $timestamp = shift || 0;
 

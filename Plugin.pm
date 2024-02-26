@@ -272,7 +272,7 @@ sub getFavorites {
 		$cb->( {
 			items => $items
 		} );
-	}, $params->{type});
+	}, $params->{type}, $args->{quantity} == 1 );
 }
 
 sub getArtistAlbums {
