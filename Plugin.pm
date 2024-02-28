@@ -39,6 +39,10 @@ sub initPlugin {
 	Slim::Player::ProtocolHandlers->registerHandler('tidal', 'Plugins::TIDAL::ProtocolHandler');
 	Slim::Music::Import->addImporter('Plugins::TIDAL::Importer', { use => 1 });
 
+	Slim::Menu::GlobalSearch->registerInfoProvider( tidalSearch => (
+		func => \&searchMenu
+	) );
+
 	$class->SUPER::initPlugin(
 		feed   => \&handleFeed,
 		tag    => 'tidal',
@@ -139,32 +143,16 @@ sub handleFeed {
 	},{
 		name  => cstring($client, 'SEARCH'),
 		image => 'html/images/search.png',
-		type => 'outline',
-		items => [{
-			name => cstring($client, 'EVERYTHING'),
-			type  => 'search',
-			url   => \&searchEverything,
-		},{
-			name => cstring($client, 'PLAYLISTS'),
-			type  => 'search',
-			url   => \&search,
-			passthrough => [ { type => 'playlists'	} ],
-		},{
-			name => cstring($client, 'ARTISTS'),
-			type  => 'search',
-			url   => \&search,
-			passthrough => [ { type => 'artists' } ],
-		},{
-			name => cstring($client, 'ALBUMS'),
-			type  => 'search',
-			url   => \&search,
-			passthrough => [ { type => 'albums' } ],
-		},{
-			name => cstring($client, 'SONGS'),
-			type  => 'search',
-			url   => \&search,
-			passthrough => [ { type => 'tracks' } ],
-		}]
+		type  => 'search',
+		url   => sub {
+			my ($client, $cb, $params) = @_;
+			my $menu = searchMenu($client, {
+				search => lc($params->{search})
+			});
+			$cb->({
+				items => $menu->{items}
+			});
+		},
 	},{
 		name  => cstring($client, 'GENRES'),
 		image => 'html/images/genres.png',
@@ -216,6 +204,37 @@ sub selectAccount {
 	} sort values %{ $prefs->get('accounts') || {} } ];
 
 	$cb->({ items => $items });
+}
+
+sub searchMenu {
+	my ( $client, $tags ) = @_;
+
+	my $searchParam = { query => $tags->{search} };
+
+	return {
+		name => cstring($client, 'PLUGIN_TIDAL_NAME'),
+		items => [{
+			name => cstring($client, 'EVERYTHING'),
+			url  => \&searchEverything,
+			passthrough => [ $searchParam ],
+		},{
+			name => cstring($client, 'PLAYLISTS'),
+			url  => \&search,
+			passthrough => [ { %$searchParam, type => 'playlists'	} ],
+		},{
+			name => cstring($client, 'ARTISTS'),
+			url  => \&search,
+			passthrough => [ { %$searchParam, type => 'artists' } ],
+		},{
+			name => cstring($client, 'ALBUMS'),
+			url  => \&search,
+			passthrough => [ { %$searchParam, type => 'albums' } ],
+		},{
+			name => cstring($client, 'SONGS'),
+			url  => \&search,
+			passthrough => [ { %$searchParam, type => 'tracks' } ],
+		}]
+	};
 }
 
 sub getFavoritePlaylists {
@@ -448,8 +467,8 @@ sub searchEverything {
 			push @$items, $item if $item;
 		}
 
-		foreach my $key (sort keys %$result) {
-			next if $key =~ /videos/ || !$result->{$key}->{totalNumberOfItems};
+		foreach my $key ("topHit", "playlists", "artists", "albums", "tracks") {
+			next unless $result->{$key} && $result->{$key}->{totalNumberOfItems};
 
 			my $entries = $key ne 'tracks' ?
 						  $result->{$key}->{items} :
