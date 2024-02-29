@@ -205,4 +205,19 @@ PLUGIN_TIDAL_TOP_TRACKS
 	NO	Mest populære spor
 	PL	Najczęściej słuchane
 	RU	Лучшие дорожки
-	SV	Toppspår	
+	SV	Toppspår
+
+PLUGIN_TIDAL_ON_TIDAL
+	CS	Na TIDALu
+	DA	På TIDAL
+	DE	In TIDAL
+	EN	On TIDAL
+	ES	En TIDAL
+	FI	TIDAL:ssä
+	FR	Sur TIDAL
+	IT	Su TIDAL
+	NL	Op TIDAL
+	NO	På TIDAL
+	PL	W usłudze TIDAL
+	RU	На TIDAL
+	SV	Om TIDAL

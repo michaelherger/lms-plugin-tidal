@@ -39,6 +39,19 @@ sub initPlugin {
 	Slim::Player::ProtocolHandlers->registerHandler('tidal', 'Plugins::TIDAL::ProtocolHandler');
 	Slim::Music::Import->addImporter('Plugins::TIDAL::Importer', { use => 1 });
 
+	# Track Info item
+	Slim::Menu::TrackInfo->registerInfoProvider( tidalTrackInfo => (
+		func  => \&trackInfoMenu,
+	) );
+
+	Slim::Menu::ArtistInfo->registerInfoProvider( tidalArtistInfo => (
+		func => \&artistInfoMenu
+	) );
+
+	Slim::Menu::AlbumInfo->registerInfoProvider( tidalAlbumInfo => (
+		func => \&albumInfoMenu
+	) );
+
 	Slim::Menu::GlobalSearch->registerInfoProvider( tidalSearch => (
 		func => \&searchMenu
 	) );
@@ -246,6 +259,69 @@ sub selectAccount {
 	} sort values %{ $prefs->get('accounts') || {} } ];
 
 	$cb->({ items => $items });
+}
+
+sub albumInfoMenu {
+	my ($client, $url, $album, $remoteMeta) = @_;
+	$remoteMeta ||= {};
+
+	my ($artist) = $album->artistsForRoles('ARTIST');
+	($artist) ||= $album->artistsForRoles('ALBUMARTIST');
+
+	return _objInfoMenu($client,
+		$album->extid,
+		($artist && $artist->name) || $remoteMeta->{artist},
+		$album->title || $remoteMeta->{album},
+	);
+}
+
+sub trackInfoMenu {
+	my ( $client, $url, $track, $remoteMeta ) = @_;
+	$remoteMeta ||= {};
+
+	return _objInfoMenu($client,
+		$track->extid,
+		$track->artistName || $remoteMeta->{artist},
+		$track->album ? $track->albumname : $remoteMeta->{album},
+		$track->title || $remoteMeta->{title},
+	);
+}
+
+sub artistInfoMenu {
+	my ($client, $url, $artist, $remoteMeta) = @_;
+	$remoteMeta ||= {};
+
+	return _objInfoMenu( $client, $artist->extid, $artist->name || $remoteMeta->{artist} );
+}
+
+sub _objInfoMenu {
+	my ( $client, $extid, $artist, $album, $track, $items ) = @_;
+
+	# TODO - use $extid!
+
+	$items ||= [];
+
+	push @$items, {
+		name => cstring($client, 'SEARCH'),
+		url  => \&searchEverything,
+		passthrough => [{
+			query => join(' ', $artist, $album, $track),
+		}]
+	};
+
+	my $menu;
+	if ( scalar @$items == 1) {
+		$menu = $items->[0];
+		$menu->{name} = cstring($client, 'PLUGIN_TIDAL_ON_TIDAL');
+	}
+	elsif (scalar @$items) {
+		$menu = {
+			name  => cstring($client, 'PLUGIN_TIDAL_ON_TIDAL'),
+			items => $items
+		};
+	}
+
+	return $menu if $menu;
 }
 
 sub searchMenu {
