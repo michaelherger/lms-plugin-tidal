@@ -15,7 +15,6 @@ my $log = Slim::Utils::Log::logger('plugin.tidal');
 my $cache = Slim::Utils::Cache->new();
 
 # automatically expire polling after x minutes
-# TODO - test expiry
 tie my %deviceCodes, 'Tie::Cache::LRU::Expires', EXPIRES => 5 * 60, ENTRIES => 16;
 
 sub new {

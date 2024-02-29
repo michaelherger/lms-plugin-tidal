@@ -81,6 +81,14 @@ sub track {
 	});
 }
 
+sub getArtist {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get("/artists/$id", sub {
+		$cb->($_[0] || {});
+	});
+}
+
 sub artistAlbums {
 	my ($self, $cb, $id) = @_;
 
@@ -283,7 +291,7 @@ sub getFavorites {
 	if ($cached && ref $cached->{items}) {
 		# don't bother verifying timestamp when drilling down
 		return $cb->($cached->{items}) if $drill;
-		
+
 		$self->getLatestCollectionTimestamp(sub {
 			my $timestamp = shift || 0;
 
@@ -387,11 +395,15 @@ sub _get {
 
 			$params->{limit} ||= DEFAULT_LIMIT;
 
+			while (my ($k, $v) = each %$params) {
+				$params->{$k} = Slim::Utils::Unicode::utf8toLatin1Transliterate($v);
+			}
+
 			my $cacheKey = "tidal_resp:$url:" . join(':', map {
 				$_ . $params->{$_}
 			} sort grep {
 				$_ !~ /^_/
-			} keys %$params);
+			} keys %$params) unless $noCache;
 
 			main::INFOLOG && $log->is_info && $log->info("Using cache key '$cacheKey'") unless $noCache;
 

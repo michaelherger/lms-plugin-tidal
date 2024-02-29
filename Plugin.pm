@@ -57,17 +57,17 @@ sub postinitPlugin {
 	if ( Slim::Utils::PluginManager->isEnabled('Slim::Plugin::OnlineLibrary::Plugin') ) {
 		Slim::Plugin::OnlineLibrary::Plugin->addLibraryIconProvider('tidal', '/plugins/TIDAL/html/emblem.png');
 
-	# TODO
-		# Slim::Plugin::OnlineLibrary::BrowseArtist->registerBrowseArtistItem( TIDAL => sub {
-		# 	my ( $client ) = @_;
+		require Slim::Plugin::OnlineLibrary::BrowseArtist;
+		Slim::Plugin::OnlineLibrary::BrowseArtist->registerBrowseArtistItem( TIDAL => sub {
+			my ( $client ) = @_;
 
-		# 	return {
-		# 		name => cstring($client, 'BROWSE_ON_SERVICE', 'TIDAL'),
-		# 		type => 'link',
-		# 		icon => $class->_pluginDataFor('icon'),
-		# 		url  => \&browseArtistMenu,
-		# 	};
-		# } );
+			return {
+				name => cstring($client, 'BROWSE_ON_SERVICE', 'TIDAL'),
+				type => 'link',
+				icon => $class->_pluginDataFor('icon'),
+				url  => \&browseArtistMenu,
+			};
+		} );
 	}
 
 	if ( Slim::Utils::PluginManager->isEnabled('Plugins::LastMix::Plugin') ) {
@@ -174,6 +174,48 @@ sub handleFeed {
 	}
 
 	$cb->({ items => $items });
+}
+
+sub browseArtistMenu {
+	my ($client, $cb, $params, $args) = @_;
+
+	my $artistId = $params->{artist_id} || $args->{artist_id};
+	if ( defined($artistId) && $artistId =~ /^\d+$/ && (my $artistObj = Slim::Schema->resultset("Contributor")->find($artistId))) {
+		my $renderer = sub {
+			my $items = shift || { items => [] };
+			$items = $items->{items};
+
+			if ($items && ref $items eq 'ARRAY' && scalar @$items > 0) {
+				$items = [ grep {
+					Slim::Utils::Text::ignoreCase($_->{name} ) eq $artistObj->namesearch;
+				} @$items ];
+			}
+
+			if (scalar @$items == 1 && ref $items->[0]->{items}) {
+				$items = $items->[0]->{items};
+			}
+
+			$cb->( {
+				items => $items
+			} );
+		};
+
+		if (my ($extId) = grep /tidal:artist:(\d+)/, @{$artistObj->extIds}) {
+			($args->{artistId}) = $extId =~ /tidal:artist:(\d+)/;
+			return getArtist($client, $renderer, $params, $args);
+		}
+		else {
+			$args->{search} = $artistObj->name;
+			$args->{type} = 'artists';
+
+			return search($client, $renderer, $params, $args);
+		}
+	}
+
+	$cb->([{
+		type  => 'text',
+		title => cstring($client, 'EMPTY'),
+	}]);
 }
 
 sub selectAccount {
@@ -292,6 +334,19 @@ sub getFavorites {
 			items => $items
 		} );
 	}, $params->{type}, $args->{quantity} == 1 );
+}
+
+sub getArtist {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	my $artistId = $params->{artistId};
+
+	getAPIHandler($client)->getArtist(sub {
+		my $item = _renderArtist($client, @_);
+		$cb->( {
+			items => [$item]
+		} );
+	}, $artistId);
 }
 
 sub getArtistAlbums {
@@ -438,8 +493,8 @@ sub getPlaylist {
 sub search {
 	my ($client, $cb, $args, $params) = @_;
 
-	$args->{search} ||= $params->{query};
-	$args->{type} = $params->{type};
+	$args->{search} ||= $params->{query} || $params->{search};
+	$args->{type}   ||= $params->{type};
 
 	getAPIHandler($client)->search(sub {
 		my $items = shift;
