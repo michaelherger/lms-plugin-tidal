@@ -118,7 +118,7 @@ sub scanArtists { if (main::SCANNER) {
 
 	while (my ($accountName, $userId) = each %$accounts) {
 		main::INFOLOG && $log->is_info && $log->info("Reading artists... " . $accountName);
-		$progress->update(string('PLUGIN_QOBUZ_PROGRESS_READ_ARTISTS', $accountName));
+		$progress->update(string('PLUGIN_TIDAL_PROGRESS_READ_ARTISTS', $accountName));
 
 		my $artists = Plugins::TIDAL::API::Sync->getFavorites($userId, 'artists');
 
