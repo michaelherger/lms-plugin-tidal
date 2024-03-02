@@ -62,13 +62,13 @@ sub scanAlbums { if (main::SCANNER) {
 		main::INFOLOG && $log->is_info && $log->info("Reading albums... " . $accountName);
 		$progress->update(string('PLUGIN_TIDAL_PROGRESS_READ_ALBUMS', $accountName));
 
-		my $albums = Plugins::TIDAL::API::Sync->getFavorites($userId, 'albums');
+		my $albums = Plugins::TIDAL::API::Sync->getFavorites($userId, 'albums') || [];
 		$progress->total(scalar @$albums);
 
 		foreach my $album (@$albums) {
 			my $albumDetails = $cache->get('tidal_album_with_tracks_' . $album->{id});
 
-			if (0&&$albumDetails && $albumDetails->{tracks} && ref $albumDetails->{tracks}) {
+			if ( $albumDetails && $albumDetails->{tracks} && ref $albumDetails->{tracks}) {
 				$progress->update($album->{title});
 
 				$class->storeTracks([
@@ -120,7 +120,7 @@ sub scanArtists { if (main::SCANNER) {
 		main::INFOLOG && $log->is_info && $log->info("Reading artists... " . $accountName);
 		$progress->update(string('PLUGIN_TIDAL_PROGRESS_READ_ARTISTS', $accountName));
 
-		my $artists = Plugins::TIDAL::API::Sync->getFavorites($userId, 'artists');
+		my $artists = Plugins::TIDAL::API::Sync->getFavorites($userId, 'artists') || [];
 
 		$progress->total($progress->total + scalar @$artists);
 
