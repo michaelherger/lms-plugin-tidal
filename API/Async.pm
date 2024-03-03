@@ -156,6 +156,7 @@ sub myMixes {
 	}, {
 		limit => MAX_LIMIT,
 		_ttl => 3600,
+		_personal => 1,
 	});
 }
 
@@ -175,6 +176,7 @@ sub mix {
 	}, {
 		limit => MAX_LIMIT,
 		_ttl => 3600,
+		_personal => 1
 	});
 }
 
@@ -392,6 +394,7 @@ sub _get {
 
 			my $ttl = delete $params->{_ttl} || DEFAULT_TTL;
 			my $noCache = delete $params->{_nocache};
+			my $personalCache = delete $params->{_personal} ? ($self->userId . ':') : '';
 
 			$params->{limit} ||= DEFAULT_LIMIT;
 
@@ -399,7 +402,7 @@ sub _get {
 				$params->{$k} = Slim::Utils::Unicode::utf8toLatin1Transliterate($v);
 			}
 
-			my $cacheKey = "tidal_resp:$url:" . join(':', map {
+			my $cacheKey = "tidal_resp:$url:$personalCache" . join(':', map {
 				$_ . $params->{$_}
 			} sort grep {
 				$_ !~ /^_/
@@ -413,6 +416,7 @@ sub _get {
 				$params->{limit} = DEFAULT_LIMIT;
 			}
 
+			# TODO - make sure we don't pass any of the keys prefixed with an underscore!
 			my $query = complex_to_query($params);
 
 			if (!$noCache && (my $cached = $cache->get($cacheKey))) {
