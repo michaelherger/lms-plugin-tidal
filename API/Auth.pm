@@ -198,18 +198,20 @@ sub _call {
 		sub {
 			my $response = shift;
 
+			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($response));
 			my $result = eval { from_json($response->content) };
 
 			$@ && $log->error($@);
-			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
+			main::INFOLOG && $log->is_info && $log->info(Data::Dump::dump($result));
 
 			$cb->($result);
 		},
 		sub {
 			my ($http, $error) = @_;
 
-			$log->warn("Error: $error");
-			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http->contentRef));
+			$log->error("Error: $error");
+			main::INFOLOG && $log->is_info && !$log->is_debug && $log->info(Data::Dump::dump($http->contentRef));
+			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http));
 
 			$cb->({
 				error => $error || 'failed auth request'

@@ -48,10 +48,7 @@ sub handler {
 		Plugins::TIDAL::API::Auth->pollDeviceAuth($deviceAuthInfo, sub {
 			my $accountInfo = shift || {};
 
-			if ($accountInfo->{user} && $accountInfo->{user_id}) {
-				main::DEBUGLOG && $log->is_debug && $log->debug('Got account info back: ' . Data::Dump::dump($accountInfo));
-			}
-			else {
+			if (!$accountInfo->{user} || !$accountInfo->{user_id}) {
 				$log->error('Did not get any account information back');
 			}
 
