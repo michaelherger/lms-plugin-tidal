@@ -98,12 +98,16 @@ sub explodePlaylist {
 	}
 
 	if ($id) {
-		my $method;
-
 		return $cb->( [ $url ] ) if !$type;
+
+		return $cb->( [ "tidal://$id." . Plugins::TIDAL::API::getFormat() ] ) if $type eq 'track';
+
+		my $method;
+		my $params = { id => $id };
 
 		if ($type eq 'playlist') {
 			$method = \&Plugins::TIDAL::Plugin::getPlaylist;
+			$params = { uuid => $id };
 		}
 		elsif ($type eq 'album') {
 			$method = \&Plugins::TIDAL::Plugin::getAlbum;
@@ -115,7 +119,7 @@ sub explodePlaylist {
 			$method = \&Plugins::TIDAL::Plugin::getMix;
 		}
 
-		$method->($client, $cb, { }, { id => $id });
+		$method->($client, $cb, {}, $params);
 		main::INFOLOG && $log->is_info && $log->info("Getting $url: method: $method, id: $id");
 	}
 	else {
