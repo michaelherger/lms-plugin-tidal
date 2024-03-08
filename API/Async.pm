@@ -90,7 +90,7 @@ sub getArtist {
 }
 
 sub artistAlbums {
-	my ($self, $cb, $id) = @_;
+	my ($self, $cb, $id, $type) = @_;
 
 	$self->_get("/artists/$id/albums", sub {
 		my $artist = shift;
@@ -98,6 +98,7 @@ sub artistAlbums {
 		$cb->($albums || []);
 	},{
 		limit => MAX_LIMIT,
+		filter => $type || 'ALBUMS'
 	});
 }
 
