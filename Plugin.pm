@@ -843,8 +843,10 @@ sub getAPIHandler {
 		$api = $client->pluginData('api');
 
 		if ( !$api ) {
+			my $userdata = Plugins::TIDAL::API->getUserdata($prefs->client($client)->get('userId'));
+
 			# if there's no account assigned to the player, just pick one
-			if ( !$prefs->client($client)->get('userId') ) {
+			if ( !$userdata ) {
 				my $userId = Plugins::TIDAL::API->getSomeUserId();
 				$prefs->client($client)->set('userId', $userId) if $userId;
 			}

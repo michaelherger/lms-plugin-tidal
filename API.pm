@@ -52,12 +52,20 @@ sub getSomeUserId {
 	return $account;
 }
 
+sub getUserdata {
+	my ($class, $userId) = @_;
+
+	return unless $userId;
+
+	my $accounts = $prefs->get('accounts') || return;
+
+	return $accounts->{$userId};
+}
+
 sub getCountryCode {
 	my ($class, $userId) = @_;
-	my $accounts = $prefs->get('accounts') || {};
-
-	return 'US' unless $accounts && $userId && $accounts->{$userId};
-	return $accounts->{$userId}->{countryCode} || 'US';
+	my $userdata = $class->getUserdata($userId) || {};
+	return $userdata->{countryCode} || 'US';
 }
 
 sub getFormat {
