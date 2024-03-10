@@ -207,14 +207,14 @@ PLUGIN_TIDAL_TOP_TRACKS
 	RU	Лучшие дорожки
 	SV	Toppspår
 
-PLUBIN_TIDAL_EP_SINGLES
+PLUGIN_TIDAL_EP_SINGLES
 	CS	Singly a EP
 	DA	Singler & EP'er
 	DE	Singles & EPs
 	EN	Singles & EPs
 	ES	Singles y EPs
 	FI	Singlet ja EP-levyt
-	FR	Single et EP
+	FR	Singles et EPs
 	IT	Single/EP
 	NL	Singles & EP's
 	NO	Singler og EP-er
