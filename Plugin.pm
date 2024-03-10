@@ -741,7 +741,7 @@ sub _renderArtist {
 		url => \&getArtistAlbums,
 		passthrough => [{ id => $item->{id} }],
 	},{
-		name => cstring($client, 'PLUBIN_TIDAL_EP_SINGLES'),
+		name => cstring($client, 'PLUGIN_TIDAL_EP_SINGLES'),
 		url => \&getArtistAlbums,
 		passthrough => [{ id => $item->{id}, type => 'EPSANDSINGLES' }],
 	},{
