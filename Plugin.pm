@@ -279,8 +279,11 @@ sub trackInfoMenu {
 	my ( $client, $url, $track, $remoteMeta ) = @_;
 	$remoteMeta ||= {};
 
+	my $extid = $track->extid;
+	$extid ||= $url if $url =~ /^tidal:/;
+
 	return _objInfoMenu($client,
-		$track->extid,
+		$extid,
 		$track->artistName || $remoteMeta->{artist},
 		$track->album ? $track->albumname : $remoteMeta->{album},
 		$track->title || $remoteMeta->{title},

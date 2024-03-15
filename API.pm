@@ -17,7 +17,7 @@ use constant SCOPES => 'r_usr+w_usr';
 use constant GRANT_TYPE_DEVICE => 'urn:ietf:params:oauth:grant-type:device_code';
 
 use constant DEFAULT_LIMIT => 100;
-use constant MAX_LIMIT => 2000;
+use constant MAX_LIMIT => 5000;
 
 use constant DEFAULT_TTL => 86400;
 use constant USER_CONTENT_TTL => 300;

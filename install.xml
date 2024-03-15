@@ -4,14 +4,14 @@
   <description>PLUGIN_TIDAL_DESC</description>
   <creator>philippe_44, Michael Herger</creator>
   <id>16da8158-263f-4347-8125-184372ea5610</id>
-  <version>0.9.1</version>
+  <version>0.9.2</version>
   <module>Plugins::TIDAL::Plugin</module>
   <importmodule>Plugins::TIDAL::Importer</importmodule>
   <optionsURL>plugins/TIDAL/settings.html</optionsURL>
   <icon>plugins/TIDAL/html/tidal_MTL_svg_tidal.png</icon>
   <onlineLibrary>true</onlineLibrary>
   <targetApplication>
-    <minVersion>8.4.0</minVersion>
+    <minVersion>8.3.0</minVersion>
     <maxVersion>*</maxVersion>
   </targetApplication>
 </extensions>

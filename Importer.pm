@@ -35,7 +35,7 @@ sub startScan { if (main::SCANNER) {
 			$class->scanArtists($accounts);
 		}
 
-		if (!$class->ignorePlaylists) {
+		if (!$class->can('ignorePlaylists') || !$class->ignorePlaylists) {
 			$class->scanPlaylists($accounts);
 		}
 
