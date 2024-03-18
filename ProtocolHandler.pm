@@ -53,6 +53,25 @@ sub forceTranscode {
 	return $format eq 'flc' && $client->model =~ /squeezebox|boom|transporter|receiver/;
 }
 
+sub trackGain {
+	my ($class, $client, $url) = @_;
+
+	return unless $client && blessed $client;
+	return unless $serverPrefs->client($client)->get('replayGainMode');
+
+	my $trackId = _getId($url);
+	my $meta = $cache->get( 'tidal_meta_' . ($trackId || '') );
+
+	return unless $meta && defined $meta->{replay_gain} && defined $meta->{peak};
+
+	# TODO - try to get album gain information?
+
+	my $gain = Slim::Player::ReplayGain::preventClipping($meta->{replay_gain}, $meta->{peak});
+	main::INFOLOG && $log->is_info && $log->info("Net replay gain: $gain");
+
+	return $gain;
+}
+
 # To support remote streaming (synced players), we need to subclass Protocols::HTTP
 sub new {
 	my $class  = shift;
@@ -161,6 +180,8 @@ sub getNextTrack {
 		my $streamUrl = $manifest->{urls}[0];
 		my ($format) = $manifest->{mimeType} =~ m|audio/(\w+)|;
 		$format =~ s/flac/flc/;
+
+		# TODO - store album gain information
 
 		# this should not happen
 		if ($format ne Plugins::TIDAL::API::getFormat) {

@@ -162,6 +162,7 @@ sub cacheTrackMetadata {
 			icon => $icon,
 			cover => $icon,
 			replay_gain => $entry->{replayGain} || 0,
+			peak => $entry->{peak},
 			disc => $entry->{volumeNumber},
 			tracknum => $entry->{trackNumber},
 		};
