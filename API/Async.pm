@@ -128,6 +128,20 @@ sub artistTopTracks {
 	});
 }
 
+sub trackRadio {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get("/tracks/$id/radio", sub {
+		my $result = shift;
+		my $tracks = Plugins::TIDAL::API->cacheTrackMetadata($result->{items}) if $result;
+		$cb->($tracks || []);
+	},{
+		limit => MAX_LIMIT,
+		_ttl => 3600,
+		_personal => 1
+	});
+}
+
 # try to remove duplicates
 sub _filterAlbums {
 	my ($albums) = shift || return;

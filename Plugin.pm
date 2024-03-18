@@ -321,6 +321,14 @@ sub trackInfoMenu {
 		} ],
 	} if $title;
 
+	my $tid = $track->remote ? $remoteMeta->{id} : undef;
+	push @$items, {
+		name => cstring($client, 'PLUGIN_TIDAL_TRACK_MIX'),
+		url => \&getTrackRadio,
+		image => 'plugins/TIDAL/html/mix_MTL_svg_stream.png',
+		passthrough => [{ id => $tid }],
+	} if $tid;
+
 	return {
 		type => 'outlink',
 		items => $items,
@@ -495,6 +503,17 @@ sub getArtistTopTracks {
 	my ( $client, $cb, $args, $params ) = @_;
 
 	getAPIHandler($client)->artistTopTracks(sub {
+		my $items = _renderTracks(@_);
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{id});
+}
+
+sub getTrackRadio {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->trackRadio(sub {
 		my $items = _renderTracks(@_);
 		$cb->( {
 			items => $items
