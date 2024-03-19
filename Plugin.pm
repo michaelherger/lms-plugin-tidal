@@ -321,7 +321,7 @@ sub trackInfoMenu {
 		} ],
 	} if $title;
 
-	my $tid = $track->remote ? $remoteMeta->{id} : undef;
+	my $tid = Plugins::TIDAL::ProtocolHandler::_getId($track->url);
 	push @$items, {
 		name => cstring($client, 'PLUGIN_TIDAL_TRACK_MIX'),
 		type => 'playlist',
