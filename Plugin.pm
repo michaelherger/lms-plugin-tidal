@@ -324,6 +324,7 @@ sub trackInfoMenu {
 	my $tid = $track->remote ? $remoteMeta->{id} : undef;
 	push @$items, {
 		name => cstring($client, 'PLUGIN_TIDAL_TRACK_MIX'),
+		type => 'playlist',
 		url => \&getTrackRadio,
 		image => 'plugins/TIDAL/html/mix_MTL_svg_stream.png',
 		passthrough => [{ id => $tid }],
