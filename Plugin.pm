@@ -289,6 +289,7 @@ sub trackInfoMenu {
 	my $search = cstring($client, 'SEARCH');
 	my $items = [];
 
+	my $artists = $track->remote ? $remoteMeta->{artists} : [];
 	my $albumId = $track->remote ? $remoteMeta->{album_id} : undef;
 	my $trackId = Plugins::TIDAL::ProtocolHandler::_getId($track->url);
 
@@ -302,6 +303,10 @@ sub trackInfoMenu {
 		image => 'html/images/albums.png',
 		passthrough => [{ id => $albumId }],
 	} if $albumId;
+
+	foreach my $_artist (@$artists) {
+		push @$items, _renderArtist($client, $_artist);
+	}
 
 	push @$items, {
 		name => cstring($client, 'PLUGIN_TIDAL_TRACK_MIX'),
