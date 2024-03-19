@@ -289,7 +289,7 @@ sub trackInfoMenu {
 	my $search = cstring($client, 'SEARCH');
 	my $items = [];
 	push @$items, {
-		name => "$search " . cstring($client, 'ARTISTS') . " '$artist'",
+		name => "$search " . cstring($client, 'ARTIST') . " '$artist'",
 		type => 'link',
 		url => \&search,
 		image => 'html/images/artists.png',
@@ -300,7 +300,7 @@ sub trackInfoMenu {
 	} if $artist;
 
 	push @$items, {
-		name => "$search " . cstring($client, 'ALBUMS') . " '$album'",
+		name => "$search " . cstring($client, 'ALBUM') . " '$album'",
 		type => 'link',
 		url => \&search,
 		image => 'html/images/albums.png',
@@ -311,7 +311,7 @@ sub trackInfoMenu {
 	} if $album;
 
 	push @$items, {
-		name => "$search " . cstring($client, 'SONGS') . " '$title'",
+		name => "$search " . cstring($client, 'SONG') . " '$title'",
 		type => 'link',
 		url => \&search,
 		image => 'html/images/playall.png',
