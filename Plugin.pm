@@ -283,7 +283,7 @@ sub trackInfoMenu {
 	$extid ||= $url if $url =~ /^tidal:/;
 
 	my $artist = $track->remote ? $remoteMeta->{artist} : $track->artistName;
-	my $album  = $track->remote ? $remoteMeta->{album} : ( $track->album ? $track->album->name : undef );
+	my $album  = $track->remote ? $remoteMeta->{album} : $track->albumname;
 	my $title  = $track->remote ? $remoteMeta->{title} : $track->title;
 
 	my $search = cstring($client, 'SEARCH');
