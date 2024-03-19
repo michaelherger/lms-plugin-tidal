@@ -288,6 +288,29 @@ sub trackInfoMenu {
 
 	my $search = cstring($client, 'SEARCH');
 	my $items = [];
+
+	my $albumId = $track->remote ? $remoteMeta->{album_id} : undef;
+
+	push @$items, {
+		name => $album,
+		line1 => $album,
+		line2 => $artist,
+		favorites_url => 'tidal://album:' . $albumId,
+		type => 'playlist',
+		url => \&getAlbum,
+		image => 'html/images/albums.png',
+		passthrough => [{ id => $albumId }],
+	} if $albumId;
+
+	my $tid = Plugins::TIDAL::ProtocolHandler::_getId($track->url);
+	push @$items, {
+		name => cstring($client, 'PLUGIN_TIDAL_TRACK_MIX'),
+		type => 'playlist',
+		url => \&getTrackRadio,
+		image => 'plugins/TIDAL/html/mix_MTL_svg_stream.png',
+		passthrough => [{ id => $tid }],
+	} if $tid;
+
 	push @$items, {
 		name => "$search " . cstring($client, 'ARTIST') . " '$artist'",
 		type => 'link',
@@ -320,15 +343,6 @@ sub trackInfoMenu {
 			query => $title,
 		} ],
 	} if $title;
-
-	my $tid = Plugins::TIDAL::ProtocolHandler::_getId($track->url);
-	push @$items, {
-		name => cstring($client, 'PLUGIN_TIDAL_TRACK_MIX'),
-		type => 'playlist',
-		url => \&getTrackRadio,
-		image => 'plugins/TIDAL/html/mix_MTL_svg_stream.png',
-		passthrough => [{ id => $tid }],
-	} if $tid;
 
 	return {
 		type => 'outlink',
