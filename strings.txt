@@ -106,6 +106,10 @@ PLUGIN_TIDAL_ARTIST_MIX
 	FR	Radio artiste
 	IT	Mix basato sull'artista
 
+PLUGIN_TIDAL_SIMILAR_ARTISTS
+	DE	Ähnliche Künstler
+	EN	Similar Artists
+
 PLUGIN_TIDAL_TRACK_MIX
 	CS	Mix skladeb
 	DA	Miks baseret på tilfældige numre

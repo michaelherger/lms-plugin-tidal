@@ -89,6 +89,20 @@ sub getArtist {
 	});
 }
 
+sub similarArtists {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get("/artists/$id/similar", sub {
+		my $result = shift;
+		my $items = $result->{items} if $result;
+		$cb->($items || []);
+	}, {
+		limit => MAX_LIMIT,
+		_ttl => 3600,
+		_personal => 1
+	});
+}
+
 sub artistAlbums {
 	my ($self, $cb, $id, $type) = @_;
 

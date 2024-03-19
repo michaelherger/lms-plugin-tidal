@@ -428,6 +428,20 @@ sub getArtist {
 	}, $artistId);
 }
 
+sub getSimilarArtists {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->similarArtists(sub {
+		my $items = shift;
+
+		$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ] if $items;
+
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{id});
+}
+
 sub getArtistAlbums {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -764,6 +778,12 @@ sub _renderArtist {
 			passthrough => [{ id => $item->{mixes}->{$_} }],
 		};
 	}
+
+	push @$items, {
+		name => cstring($client, "PLUGIN_TIDAL_SIMILAR_ARTISTS"),
+		url => \&getSimilarArtists,
+		passthrough => [{ id => $item->{id} }],
+	};
 
 	return scalar @$items > 1
 	? {
