@@ -282,12 +282,59 @@ sub trackInfoMenu {
 	my $extid = $track->extid;
 	$extid ||= $url if $url =~ /^tidal:/;
 
-	return _objInfoMenu($client,
-		$extid,
-		$track->artistName || $remoteMeta->{artist},
-		$track->album ? $track->albumname : $remoteMeta->{album},
-		$track->title || $remoteMeta->{title},
-	);
+	my $artist = $track->remote ? $remoteMeta->{artist} : $track->artistName;
+	my $album  = $track->remote ? $remoteMeta->{album} : $track->albumname;
+	my $title  = $track->remote ? $remoteMeta->{title} : $track->title;
+
+	my $search = cstring($client, 'SEARCH');
+	my $items = [];
+	push @$items, {
+		name => "$search " . cstring($client, 'ARTIST') . " '$artist'",
+		type => 'link',
+		url => \&search,
+		image => 'html/images/artists.png',
+		passthrough => [ {
+			type => 'artists',
+			query => $artist,
+		} ],
+	} if $artist;
+
+	push @$items, {
+		name => "$search " . cstring($client, 'ALBUM') . " '$album'",
+		type => 'link',
+		url => \&search,
+		image => 'html/images/albums.png',
+		passthrough => [ {
+			type => 'albums',
+			query => $album,
+		} ],
+	} if $album;
+
+	push @$items, {
+		name => "$search " . cstring($client, 'SONG') . " '$title'",
+		type => 'link',
+		url => \&search,
+		image => 'html/images/playall.png',
+		passthrough => [ {
+			type => 'tracks',
+			query => $title,
+		} ],
+	} if $title;
+
+	my $tid = Plugins::TIDAL::ProtocolHandler::_getId($track->url);
+	push @$items, {
+		name => cstring($client, 'PLUGIN_TIDAL_TRACK_MIX'),
+		type => 'playlist',
+		url => \&getTrackRadio,
+		image => 'plugins/TIDAL/html/mix_MTL_svg_stream.png',
+		passthrough => [{ id => $tid }],
+	} if $tid;
+
+	return {
+		type => 'outlink',
+		items => $items,
+		name => cstring($client, 'PLUGIN_TIDAL_ON_TIDAL'),
+	};
 }
 
 sub artistInfoMenu {
@@ -457,6 +504,17 @@ sub getArtistTopTracks {
 	my ( $client, $cb, $args, $params ) = @_;
 
 	getAPIHandler($client)->artistTopTracks(sub {
+		my $items = _renderTracks(@_);
+		$cb->( {
+			items => $items
+		} );
+	}, $params->{id});
+}
+
+sub getTrackRadio {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->trackRadio(sub {
 		my $items = _renderTracks(@_);
 		$cb->( {
 			items => $items
