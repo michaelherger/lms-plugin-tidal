@@ -290,6 +290,7 @@ sub trackInfoMenu {
 	my $items = [];
 
 	my $albumId = $track->remote ? $remoteMeta->{album_id} : undef;
+	my $trackId = Plugins::TIDAL::ProtocolHandler::_getId($track->url);
 
 	push @$items, {
 		name => $album,
@@ -302,14 +303,13 @@ sub trackInfoMenu {
 		passthrough => [{ id => $albumId }],
 	} if $albumId;
 
-	my $tid = Plugins::TIDAL::ProtocolHandler::_getId($track->url);
 	push @$items, {
 		name => cstring($client, 'PLUGIN_TIDAL_TRACK_MIX'),
 		type => 'playlist',
 		url => \&getTrackRadio,
 		image => 'plugins/TIDAL/html/mix_MTL_svg_stream.png',
-		passthrough => [{ id => $tid }],
-	} if $tid;
+		passthrough => [{ id => $trackId }],
+	} if $trackId;
 
 	push @$items, {
 		name => "$search " . cstring($client, 'ARTIST') . " '$artist'",
