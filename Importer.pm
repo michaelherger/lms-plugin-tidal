@@ -219,6 +219,7 @@ sub getArtistPicture { if (main::SCANNER) {
 
 	$id =~ s/tidal:artist://;
 
+	require Plugins::TIDAL::API::Sync;
 	my $artist = Plugins::TIDAL::API::Sync->getArtist(undef, $id) || {};
 
 	if ($artist->{cover}) {
