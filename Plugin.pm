@@ -780,7 +780,7 @@ sub _renderArtist {
 	}
 
 	push @$items, {
-		name => "Similar artists",
+		name => cstring($client, "PLUGIN_TIDAL_SIMILAR_ARTISTS"),
 		url => \&getSimilarArtists,
 		passthrough => [{ id => $item->{id} }],
 	};
