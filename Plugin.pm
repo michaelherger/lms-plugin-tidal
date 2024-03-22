@@ -279,8 +279,9 @@ sub trackInfoMenu {
 	my ( $client, $url, $track, $remoteMeta ) = @_;
 	$remoteMeta ||= {};
 
+	my $isTidalTrack = $url =~ /^tidal:/;
 	my $extid = $track->extid;
-	$extid ||= $url if $url =~ /^tidal:/;
+	$extid ||= $url if $isTidalTrack;
 
 	my $artist = $track->remote ? $remoteMeta->{artist} : $track->artistName;
 	my $album  = $track->remote ? $remoteMeta->{album} : $track->albumname;
@@ -289,8 +290,8 @@ sub trackInfoMenu {
 	my $search = cstring($client, 'SEARCH');
 	my $items = [];
 
-	my $artists = $track->remote ? $remoteMeta->{artists} : [];
-	my $albumId = $track->remote ? $remoteMeta->{album_id} : undef;
+	my $artists = ($track->remote && $isTidalTrack) ? $remoteMeta->{artists} : [];
+	my $albumId = ($track->remote && $isTidalTrack) ? $remoteMeta->{album_id} : undef;
 	my $trackId = Plugins::TIDAL::ProtocolHandler::_getId($track->url);
 
 	push @$items, {
