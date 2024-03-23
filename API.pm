@@ -166,6 +166,7 @@ sub cacheTrackMetadata {
 			peak => $entry->{peak},
 			disc => $entry->{volumeNumber},
 			tracknum => $entry->{trackNumber},
+			url => $entry->{url},
 		};
 
 		# cache track metadata aggressively

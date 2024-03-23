@@ -209,6 +209,15 @@ sub mix {
 	});
 }
 
+sub album {
+	my ($self, $cb, $id) = @_;
+
+	$self->_get("/albums/$id", sub {
+		my $album = shift;
+		$cb->($album);
+	});
+}
+
 sub albumTracks {
 	my ($self, $cb, $id) = @_;
 
@@ -266,6 +275,15 @@ sub userPlaylists {
 		limit => MAX_LIMIT,
 		_ttl => 300,
 	})
+}
+
+sub playlistData {
+	my ($self, $cb, $uuid) = @_;
+
+	$self->_get("/playlists/$uuid", sub {
+		my $playlist = shift;
+		$cb->($playlist);
+	});
 }
 
 sub playlist {
@@ -377,6 +395,51 @@ sub getLatestCollectionTimestamp {
 	});
 }
 
+sub updateFavorite {
+	my ($self, $cb, $action, $type, $id) = @_;
+
+	$self->getToken(sub {
+		my ($token) = @_;
+
+		if (!$token) {
+			my $error = $1 || 'NO_ACCESS_TOKEN';
+			$error = 'NO_ACCESS_TOKEN' if $error !~ /429/;
+
+			$cb->({
+				name => string('Did not get a token' . $error),
+				type => 'text'
+			});
+		}
+		else {
+			my $countryCode = Plugins::TIDAL::API->getCountryCode($self->userId);
+
+=comment
+			# make sure we'll force an update check next time
+			my $updated = $self->updated;
+			$self->updated($updated . "$type:") unless $updated =~ /$type/;
+=cut
+			my $method = ($action =~ /add/) ? 'POST' : 'DELETE';
+			main::INFOLOG && $log->is_info && $log->info(uc($method) . " /users/", $self->userId, "/favorites/$type/$id?countryCode=$countryCode");
+
+			# no DELETE method in SimpleAsync
+			my $http = Slim::Networking::Async::HTTP->new;
+			my $request = HTTP::Request->new( $method => BURL . "/users/" . $self->userId . "/favorites/$type/$id?countryCode=$countryCode" );
+			$request->header( 'Authorization' => 'Bearer ' . $token );
+			$request->header( 'Content-Length' => 0 );
+			$http->send_request( {
+				request => $request,
+				onBody  => $cb,
+				onError => sub {
+					my ($http, $error) = @_;
+					$log->warn("Error: $error");
+					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http));
+					$cb->();
+				}
+			} );
+		}
+	});
+}
+
 sub getTrackUrl {
 	my ($self, $cb, $id, $params) = @_;
 
@@ -386,7 +449,6 @@ sub getTrackUrl {
 		$cb->(@_);
 	}, $params);
 }
-
 
 sub getToken {
 	my ( $self, $cb ) = @_;

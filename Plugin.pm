@@ -32,8 +32,10 @@ sub initPlugin {
 	if (main::WEBUI) {
 		require Plugins::TIDAL::Settings;
 		require Plugins::TIDAL::Settings::Auth;
+		require Plugins::TIDAL::Info;
 		Plugins::TIDAL::Settings->new();
 		Plugins::TIDAL::Settings::Auth->new();
+		Plugins::TIDAL::Info->init();
 	}
 
 	Slim::Player::ProtocolHandlers->registerHandler('tidal', 'Plugins::TIDAL::ProtocolHandler');
@@ -756,10 +758,20 @@ sub _renderPlaylist {
 		line1 => $item->{title},
 		line2 => join(', ', map { $_->{name} } @{$item->{promotedArtists} || []}),
 		favorites_url => 'tidal://playlist:' . $item->{uuid},
+		play => 'tidal://playlist:' . $item->{uuid},
 		type => 'playlist',
 		url => \&getPlaylist,
 		image => Plugins::TIDAL::API->getImageUrl($item),
 		passthrough => [ { uuid => $item->{uuid} } ],
+		itemActions => {
+			info => {
+				command   => ['tidal_info', 'items'],
+				fixedParams => {
+					type => 'playlists',
+					id => $item->{uuid},
+				},
+			},
+		},
 	};
 }
 
@@ -782,10 +794,23 @@ sub _renderAlbum {
 		line1 => $item->{title},
 		line2 => $item->{artist}->{name},
 		favorites_url => 'tidal://album:' . $item->{id},
+		favorites_title => $item->{title} . ' - ' . $item->{artist}->{name},
+		favorites_type => 'playlist',
 		type => 'playlist',
 		url => \&getAlbum,
 		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 		passthrough => [{ id => $item->{id} }],
+		# we need a 'play' for M(ore) to appear
+		play => 'tidal://album:' . $item->{id},
+		itemActions => {
+			info => {
+				command   => ['tidal_info', 'items'],
+				fixedParams => {
+					type => 'albums',
+					id => $item->{id},
+				},
+			},
+		},
 	};
 }
 
@@ -806,6 +831,8 @@ sub _renderTrack {
 
 	return {
 		name => $title,
+		type => 'audio',
+		favorites_title => $item->{title} . ' - ' . $item->{artist}->{name},
 		line1 => $item->{title},
 		line2 => $item->{artist}->{name},
 		on_select => 'play',
@@ -813,6 +840,15 @@ sub _renderTrack {
 		play => $url,
 		playall => 1,
 		image => $item->{cover},
+		itemActions => {
+			info => {
+				command   => ['tidal_info', 'items'],
+				fixedParams => {
+					type => 'tracks',
+					id => $item->{id},
+				},
+			},
+		},
 	};
 }
 
@@ -863,16 +899,28 @@ sub _renderArtist {
 		passthrough => [{ id => $item->{id} }],
 	};
 
+	my $itemActions = {
+		info => {
+			command   => ['tidal_info', 'items'],
+			fixedParams => {
+				type => 'artists',
+				id => $item->{id},
+			},
+		},
+	};
+
 	return scalar @$items > 1
 	? {
 		name => $item->{name},
 		type => 'outline',
 		items => $items,
+		itemActions => $itemActions,
 		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 	}
 	: {
 		%{$items->[0]},
 		name => $item->{name},
+		itemActions => $itemActions,
 		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 	};
 }
