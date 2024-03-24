@@ -1,4 +1,4 @@
-package Plugins::TIDAL::Info;
+package Plugins::TIDAL::InfoMenu;
 
 use strict;
 use Tie::Cache::LRU;
@@ -29,7 +29,7 @@ sub init {
 #  |  |  |has Tags
 #  |  |  |  |Function to call
 	Slim::Control::Request::addDispatch( [ 'tidal_info', 'items', '_index', '_quantity' ],	[ 1, 1, 1, \&menuInfoWeb ]	);
-	Slim::Control::Request::addDispatch( [ 'tidal_info', 'jive' ],	[ 1, 1, 1, \&menuInfoJive ]	);
+	Slim::Control::Request::addDispatch( [ 'tidal_info', 'jive', '_action' ],	[ 1, 1, 1, \&menuInfoJive ]	);
 	Slim::Control::Request::addDispatch( [ 'tidal_browse', 'items' ],	[ 1, 1, 1, \&menuBrowse ]	);
 	Slim::Control::Request::addDispatch( [ 'tidal_browse', 'playlist', '_method' ],	[ 1, 1, 1, \&menuBrowse ]	);
 }
@@ -60,49 +60,46 @@ sub menuInfoWeb {
 			} else {
 				$action = (grep { $_->{id} == $id && ($type =~ /$_->{type}/i || !$_->{type}) } @$favorites) ? 'remove' : 'add';
 			}
-			
+
 			my $title = $action eq 'remove' ? cstring($client, 'PLUGIN_FAVORITES_REMOVE') : cstring($client, 'PLUGIN_FAVORITES_SAVE');
 			$title .= ' (' . cstring($client, 'PLUGIN_TIDAL_ON_TIDAL') . ')';
 
 			my $items = [];
+			
+			my $item = { 
+				type => 'link',
+				name => $title,
+			};
 
 			if ($request->getParam('menu')) {
-				push @$items, {
-					type => 'link',
-					name => $title,
+				push @$items, { %$item, 
 					isContextMenu => 1,
 					refresh => 1,
 					jive => {
+						nextWindow => 'parent',
 						actions => {
 							go => {
 								player => 0,
-								cmd    => [ 'tidal_info', 'jive' ],
-									params => {
-									type => $type,
-									id => $id,
-									action => $action,
-								},
+								cmd    => [ 'tidal_info', 'jive', $action ],
+								params => {	type => $type, id => $id }
 							}
 						},
-						nextWindow => 'parent'
 					},
 				};
 			} else {
-				push @$items, {
-					type => 'link',
-					name => $title,
+				push @$items, ( { %$item,
 					url => sub {
 						my ($client, $ucb) = @_;
 						$api->updateFavorite( sub {
-							$ucb->({
-								items => [{
-									type => 'text',
-									name => cstring($client, 'COMPLETE'),
-								}],
-							});
+							_completed($client, $ucb);
 						}, $action, $type, $id );
 					},
-				};
+				}, { 
+					type => 'link',
+					name => cstring($client, 'ADD_THIS_SONG_TO_PLAYLIST') . ' (' . cstring($client, 'PLUGIN_TIDAL_ON_TIDAL') . ')',
+					url => \&addToPlaylist,
+					passthrough => [ { id => $id } ],
+				} );
 			}
 
 			my $method;
@@ -115,12 +112,12 @@ sub menuInfoWeb {
 				$method = \&_menuArtistInfo;
 			} elsif ( $type =~ /playlists/ ) {
 				$method = \&_menuPlaylistInfo;
-=comment				
+=comment
 			} elsif ( $type =~ /podcasts/ ) {
 				$method = \&_menuPodcastInfo;
 			} elsif ( $type =~ /episodes/ ) {
 				$method = \&_menuEpisodeInfo;
-=cut				
+=cut
 			}
 
 			$method->( $api, $items, sub {
@@ -132,7 +129,7 @@ sub menuInfoWeb {
 				$favorites->{favorites_icon} = $favorites->{icon} if $favorites;
 				$cb->( {
 					type  => 'opml',
-					%$favorites, 					
+					%$favorites,
 					image => $icon,
 					items => $items,
 					# do we need this one?
@@ -145,17 +142,51 @@ sub menuInfoWeb {
 	}, $request );
 }
 
+sub addToPlaylist {
+	my ($client, $cb, $args, $params) = @_;
+	
+	my $api = Plugins::TIDAL::Plugin::getAPIHandler($client);
+
+	$api->getFavorites( sub {
+		my $items = [];
+		
+		# only present playlist that we have the right to modify
+		foreach my $item ( @{$_[0] || {}} ) {
+			next if $item->{creator}->{id} ne $api->userId;
+		
+			push @$items, {
+				name => $item->{title},
+				url => sub {
+					my ($client, $cb, $args, $params) = @_;
+					$api->updatePlaylist( sub {
+						_completed($client, $cb);
+					}, 'add', $params->{uuid}, $params->{trackId} );
+				},	
+				image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
+				passthrough => [ { trackId => $params->{id}, uuid => $item->{uuid} } ],
+			};
+		}
+
+		$cb->( { items => $items } );
+	}, 'playlists' );
+}
+
 sub menuInfoJive {
 	my $request = shift;
 
-	my $type = $request->getParam('type');
 	my $id = $request->getParam('id');
 	my $api = Plugins::TIDAL::Plugin::getAPIHandler($request->client);
-	my $action = $request->getParam('action');
-
-	$api->updateFavorite( sub { }, $action, $type, $id );
+	my $action = $request->getParam('_action');
+	
+	if ($action =~ /removeTrack/ ) {
+		my $playlistId = $request->getParam('playlistId');
+		$api->updatePlaylist( sub { }, 'del', $playlistId, $id );
+	} else {
+		my $type = $request->getParam('type');
+		$api->updateFavorite( sub { }, $action, $type, $id );
+	}
 }
-
+	
 sub menuBrowse {
 	my $request = shift;
 
@@ -224,7 +255,7 @@ sub menuBrowse {
 
 			# track must be in cache, no memorizing
 			my $cache = Slim::Utils::Cache->new;
-			my $track = Plugins::TIDAL::Plugin::_renderItem( $client, $cache->get('tidal_meta_' . $id), { addArtistToTitle => 1 } );	
+			my $track = Plugins::TIDAL::Plugin::_renderItem( $client, $cache->get('tidal_meta_' . $id), { addArtistToTitle => 1 } );
 			$cb->([$track]);
 =comment
 		} elsif ( $type =~ /podcast/ ) {
@@ -319,7 +350,42 @@ sub _menuTrackInfo {
 	# play/add/add_next options except for skins that don't want it
 	my $base = _menuBase($api->client, 'track', $id, $params);
 	push @$items, @$base if @$base;
-
+	
+	# if we have a playlist id, then we might remove that track from playlist
+	if ($params->{playlistId} ) {
+		my $item = {
+			type => 'link',
+			name => cstring($api->client, 'REMOVE_THIS_SONG_FROM_PLAYLIST') . ' (' . cstring($api->client, 'PLUGIN_TIDAL_ON_TIDAL') . ')',
+		};
+			
+		if ($params->{menu}) {
+			push @$items, { %$item, 
+				isContextMenu => 1,
+				refresh => 1,
+				jive => {
+					nextWindow => 'parent',
+					actions => {
+						go => {
+							player => 0,
+							cmd    => [ 'tidal_info', 'jive', 'removeTrack' ],
+							params => { id => $params->{id}, playlistId => $params->{playlistId} },
+						}
+					},
+				},
+			}
+		} else {
+			push @$items, { %$item, 
+				url => sub {
+					my ($client, $cb, $args, $params) = @_;
+					$api->updatePlaylist( sub {
+						_completed($api->client, $cb);
+					}, 'del', $params->{playlistId}, $params->{id} );
+				},	
+				passthrough => [ $params ],
+			}
+		}
+	}
+	
 	push @$items, ( {
 		type => 'link',
 		name =>  $track->{album},
@@ -559,6 +625,16 @@ sub _menuEpisodeInfo {
 	}, $id );
 }
 =cut
+
+sub _completed {
+	my ($client, $cb) = @_;
+	$cb->({
+		items => [{
+			type => 'text',
+			name => cstring($client, 'COMPLETE'),
+		}],
+	});
+}	
 
 
 1;

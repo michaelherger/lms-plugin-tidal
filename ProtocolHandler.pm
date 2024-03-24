@@ -59,7 +59,7 @@ sub trackGain {
 	return unless $client && blessed $client;
 	return unless $serverPrefs->client($client)->get('replayGainMode');
 
-	my $trackId = _getId($url);
+	my $trackId = getId($url);
 	my $meta = $cache->get( 'tidal_meta_' . ($trackId || '') );
 
 	return unless $meta && defined $meta->{replay_gain} && defined $meta->{peak};
@@ -158,7 +158,7 @@ sub getNextTrack {
 	my $url = $song->track()->url;
 
 	# Get track URL for the next track
-	my $trackId = _getId($url);
+	my $trackId = getId($url);
 
 	if (!$trackId) {
 		$log->error("can't get trackId");
@@ -224,7 +224,7 @@ sub getMetadataFor {
 	my ( $class, $client, $url ) = @_;
 	return {} unless $url;
 
-	my $trackId = _getId($url);
+	my $trackId = getId($url);
 	my $meta = $cache->get( 'tidal_meta_' . ($trackId || '') );
 
 	# if metadata is in cache, we just need to add bitrate
@@ -283,7 +283,7 @@ sub getIcon {
 	return Plugins::TIDAL::Plugin->_pluginDataFor('icon');
 }
 
-sub _getId {
+sub getId {
 	my ($id) = $_[0] =~ m|tidal://(\d+)|;
 	return $id;
 }

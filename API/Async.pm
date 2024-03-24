@@ -414,7 +414,7 @@ sub updateFavorite {
 			my $countryCode = Plugins::TIDAL::API->getCountryCode($self->userId);
 
 =comment
-			# make sure we'll force an update check next time
+			# TODO: make sure we'll force an update check next time
 			my $updated = $self->updated;
 			$self->updated($updated . "$type:") unless $updated =~ /$type/;
 =cut
@@ -438,6 +438,59 @@ sub updateFavorite {
 			} );
 		}
 	});
+}
+
+sub updatePlaylist {
+	my ($self, $cb, $action, $uuid, $trackId) = @_;
+
+=comment
+	# TODO: I had to do a dedicated cache for playlist a while ago and that's useful
+	# as we need here to invalidate what is cached.
+	$cache->remove('tidal_playlist_' . $id);
+=cut	
+	
+	$self->getToken(sub {
+		my ($token) = @_;
+
+		if (!$token) {
+			my $error = $1 || 'NO_ACCESS_TOKEN';
+			$error = 'NO_ACCESS_TOKEN' if $error !~ /429/;
+
+			$cb->({
+				name => string('Did not get a token' . $error),
+				type => 'text'
+			});
+		}
+		else {
+			my $countryCode = Plugins::TIDAL::API->getCountryCode($self->userId);
+			
+			my $query = complex_to_query( {
+				trackIds => $trackId,
+				onDupes => 'SKIP',
+				#onArtifactNotFound => FAIL,				
+			} );
+			
+			# TODO this seems to fail for a reason I don't understand
+			my $method = ($action =~ /add/) ? 'POST' : 'DELETE';
+			main::INFOLOG && $log->is_info && $log->info(uc($method) . " /playlists/$uuid/items?countryCode=$countryCode&$query");
+
+			# no DELETE method in SimpleAsync
+			my $http = Slim::Networking::Async::HTTP->new;
+			my $request = HTTP::Request->new( $method => BURL . "/playlists/$uuid?countryCode=$countryCode&$query" );
+			$request->header( 'Authorization' => 'Bearer ' . $token );
+			$request->header( 'Content-Length' => 0 );
+			$http->send_request( {
+				request => $request,
+				onBody  => $cb,
+				onError => sub {
+					my ($http, $error) = @_;
+					$log->warn("Error: $error");
+					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http));
+					$cb->();
+				}
+			} );
+		}
+	} );
 }
 
 sub getTrackUrl {
