@@ -294,7 +294,7 @@ sub trackInfoMenu {
 
 	my $artists = ($track->remote && $isTidalTrack) ? $remoteMeta->{artists} : [];
 	my $albumId = ($track->remote && $isTidalTrack) ? $remoteMeta->{album_id} : undef;
-	my $trackId = Plugins::TIDAL::ProtocolHandler::_getId($track->url);
+	my $trackId = Plugins::TIDAL::ProtocolHandler::getId($track->url);
 
 	push @$items, {
 		name => $album,
@@ -356,12 +356,12 @@ sub trackInfoMenu {
 	if ( $url =~ m|tidal://| ) {
 		unshift @$items, ( {
 			type => 'link',
-			name => cstring($client, 'PLUGIN_FAVORITES_SAVE') . ' (' . cstring($client, 'PLUGIN_TIDAL_ON_TIDAL') . ')',
+			name => cstring($client, 'PLUGIN_TIDAL_ADD_TO_FAVORITES'),
 			url => \&addPlayingToFavorites,
 			passthrough => [ { url => $url } ],
 		}, {
 			type => 'link',
-			name => cstring($client, 'ADD_THIS_SONG_TO_PLAYLIST') . ' (' . cstring($client, 'PLUGIN_TIDAL_ON_TIDAL') . ')',
+			name => cstring($client, 'PLUGIN_TIDAL_ADD_TO_PLAYLIST'),
 			url => \&addPlayingToPlaylist,
 			passthrough => [ { url => $url } ],
 		} );
@@ -390,7 +390,7 @@ sub addPlayingToFavorites {
 	my $id = Plugins::TIDAL::ProtocolHandler::getId($params->{url});
 	return _completed($client, $cb) unless $id;
 
-	Plugins::Deezer::Plugin::getAPIHandler($client)->updateFavorite( sub {
+	Plugins::TIDAL::Plugin::getAPIHandler($client)->updateFavorite( sub {
 		_completed($client, $cb);
 	}, 'add', 'tracks', $id );
 }
@@ -398,7 +398,7 @@ sub addPlayingToFavorites {
 sub addPlayingToPlaylist {
 	my ($client, $cb, $args, $params) = @_;
 
-	my $id = Plugins::Deezer::ProtocolHandler::getIdId($params->{url});
+	my $id = Plugins::TIDAL::ProtocolHandler::getId($params->{url});
 	return _completed($client, $cb) unless $id;
 
 	addToPlaylist($client, $cb, { }, { id => $id }),
@@ -705,7 +705,7 @@ sub getPlaylist {
 
 	# we'll only set playlist id we own it so that we can remove track later		
 	my $renderArgs = {
-		playlistId => $params->{id}
+		playlistId => $params->{uuid}
 	} if $api->userId eq $params->{creatorId};
 	
 	$api->playlist(sub {
@@ -871,18 +871,30 @@ sub _renderTracks {
 	my ($tracks, $args) = @_;
 	$args ||= {};
 
+	my $index = 0;
+	
 	return [ map {
-		_renderTrack($_, $args->{addArtistToTitle}, $args->{playlistId});
+		# due to the need of an index when deleting a track from a playlist (...) 
+		# we insert it here for convenience, but we could search the trackId index
+		# the whole playlist that should be cached...
+		_renderTrack($_, $args->{addArtistToTitle}, $args->{playlistId}, $index++);	
 	} @$tracks ];
 }
 
 sub _renderTrack {
-	my ($item, $addArtistToTitle, $playlistId) = @_;
+	my ($item, $addArtistToTitle, $playlistId, $index) = @_;
 
 	my $title = $item->{title};
 	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
 	my $url = "tidal://$item->{id}." . Plugins::TIDAL::API::getFormat();
-
+	
+	my $fixedParams = {
+		playlistId => $playlistId,
+		index => $index,
+	} if $playlistId;
+	
+	$fixedParams->{type} = 'tracks';
+	
 	return {
 		name => $title,
 		type => 'audio',
@@ -898,9 +910,8 @@ sub _renderTrack {
 			info => {
 				command   => ['tidal_info', 'items'],
 				fixedParams => {
-					type => 'tracks',
+					%$fixedParams, 
 					id => $item->{id},
-					playlistId => $playlistId,
 				},
 			},
 		},

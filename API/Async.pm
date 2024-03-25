@@ -345,6 +345,8 @@ sub getFavorites {
 			my $timestamp = shift || 0;
 
 			if ($timestamp > $cached->{timestamp}) {
+				# TODO: this is suffering from the same issue as Deezer: the _get() will use cache and
+				# playlist content is not updated. I had to do my own cache for playlist 
 				$lookupSub->();
 			}
 			else {
@@ -404,44 +406,54 @@ sub updateFavorite {
 		if (!$token) {
 			my $error = $1 || 'NO_ACCESS_TOKEN';
 			$error = 'NO_ACCESS_TOKEN' if $error !~ /429/;
-
-			$cb->({
-				name => string('Did not get a token' . $error),
-				type => 'text'
-			});
+			return $cb->($error);
 		}
-		else {
-			my $countryCode = Plugins::TIDAL::API->getCountryCode($self->userId);
+
+		my $userId = $self->userId;
+		my $countryCode = Plugins::TIDAL::API->getCountryCode($self->userId);
+		my %headers = ( 'Authorization' => 'Bearer ' . $token );
 
 =comment
-			# TODO: make sure we'll force an update check next time
-			my $updated = $self->updated;
-			$self->updated($updated . "$type:") unless $updated =~ /$type/;
+		# TODO: make sure we'll force an update check next time
+		my $updated = $self->updated;
+		$self->updated($updated . "$type:") unless $updated =~ /$type/;
 =cut
-			my $method = ($action =~ /add/) ? 'POST' : 'DELETE';
-			main::INFOLOG && $log->is_info && $log->info(uc($method) . " /users/", $self->userId, "/favorites/$type/$id?countryCode=$countryCode");
+		if ($action =~ /add/) { 
+			# well... we have a trailing 's' (I know this is hacky... and bad)
+			my $key = substr($type, 0, -1) . 'Ids';
+			
+			my $query = complex_to_query( {
+				$key => $id,
+				onArtifactNotFound => 'SKIP',
+			} );
 
+			$headers{'Content-Type'} = 'application/x-www-form-urlencoded';
+			main::INFOLOG && $log->is_info && $log->info("POST /users/$userId/favorites/$type?countryCode=$countryCode with $query");
+			
+			Slim::Networking::SimpleAsyncHTTP->new(	sub {
+				$cb->(); 
+			}, sub {
+				$cb->($_[1]); 
+			} )->post(BURL . "/users/$userId/favorites/$type?countryCode=$countryCode", %headers, $query); 				
+		}
+		else {	
 			# no DELETE method in SimpleAsync
+			main::INFOLOG && $log->is_info && $log->info("DELETE /users/$userId/favorites/$type/$id?countryCode=$countryCode");
+			
 			my $http = Slim::Networking::Async::HTTP->new;
-			my $request = HTTP::Request->new( $method => BURL . "/users/" . $self->userId . "/favorites/$type/$id?countryCode=$countryCode" );
-			$request->header( 'Authorization' => 'Bearer ' . $token );
-			$request->header( 'Content-Length' => 0 );
+			my $request = HTTP::Request->new( DELETE => BURL . "/users/$userId/favorites/$type/$id?countryCode=$countryCode" );
+			$request->header( 'Authorization' => 'Bearer ' . $token);
 			$http->send_request( {
 				request => $request,
 				onBody  => $cb,
-				onError => sub {
-					my ($http, $error) = @_;
-					$log->warn("Error: $error");
-					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http));
-					$cb->();
-				}
+				onError => sub { $cb->($_[1]); }
 			} );
 		}
-	});
+	} );
 }
 
 sub updatePlaylist {
-	my ($self, $cb, $action, $uuid, $trackId) = @_;
+	my ($self, $cb, $action, $uuid, $trackIdOrIndex) = @_;
 
 =comment
 	# TODO: I had to do a dedicated cache for playlist a while ago and that's useful
@@ -449,48 +461,61 @@ sub updatePlaylist {
 	$cache->remove('tidal_playlist_' . $id);
 =cut	
 	
-	$self->getToken(sub {
+	$self->getToken( sub {
 		my ($token) = @_;
 
 		if (!$token) {
 			my $error = $1 || 'NO_ACCESS_TOKEN';
 			$error = 'NO_ACCESS_TOKEN' if $error !~ /429/;
-
-			$cb->({
-				name => string('Did not get a token' . $error),
-				type => 'text'
-			});
+			return $cb->($error);
 		}
-		else {
-			my $countryCode = Plugins::TIDAL::API->getCountryCode($self->userId);
-			
-			my $query = complex_to_query( {
-				trackIds => $trackId,
-				onDupes => 'SKIP',
-				#onArtifactNotFound => FAIL,				
-			} );
-			
-			# TODO this seems to fail for a reason I don't understand
-			my $method = ($action =~ /add/) ? 'POST' : 'DELETE';
-			main::INFOLOG && $log->is_info && $log->info(uc($method) . " /playlists/$uuid/items?countryCode=$countryCode&$query");
 
-			# no DELETE method in SimpleAsync
-			my $http = Slim::Networking::Async::HTTP->new;
-			my $request = HTTP::Request->new( $method => BURL . "/playlists/$uuid?countryCode=$countryCode&$query" );
-			$request->header( 'Authorization' => 'Bearer ' . $token );
-			$request->header( 'Content-Length' => 0 );
-			$http->send_request( {
-				request => $request,
-				onBody  => $cb,
-				onError => sub {
-					my ($http, $error) = @_;
-					$log->warn("Error: $error");
-					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http));
-					$cb->();
-				}
-			} );
-		}
-	} );
+		my $countryCode = Plugins::TIDAL::API->getCountryCode($self->userId);
+		my %headers = ( 'Authorization' => 'Bearer ' . $token );
+		
+		# need to get e-tag first (probably can't cache that...)
+		Slim::Networking::SimpleAsyncHTTP->new(	sub {
+			my $eTag = $_[0]->headers->header('etag');
+			$eTag =~ s/"//g;
+
+			# and yes, you're not dreaming, the Tidal API does not allow you to delete
+			# a track in a playlist by it's id, you need to provide the item's *index* 
+			# in the list... OMG
+			if ($action =~ 'add') {
+				my $query = complex_to_query( {
+					trackIds => $trackIdOrIndex,
+					onDupes => 'SKIP',
+					onArtifactNotFound => 'SKIP',
+				} );
+				
+				$headers{'Content-Type'} = 'application/x-www-form-urlencoded';
+				$headers{'If-None-Match'} = $eTag if $eTag;
+			
+				main::INFOLOG && $log->is_info && $log->info("POST /playlists/$uuid/items?countryCode=$countryCode, using query '$query' and eTag $eTag)");
+				Slim::Networking::SimpleAsyncHTTP->new(	sub {
+					$cb->(); 
+				}, sub {
+					$cb->($_[1]); 
+				} )->post(BURL . "/playlists/$uuid/items?countryCode=$countryCode&limit=1", %headers, $query); 				
+			}	 
+			else {
+				# no DELETE method in SimpleAsync
+				main::INFOLOG && $log->is_info && $log->info("DELETE /playlists/$uuid/items/$trackIdOrIndex?countryCode=$countryCode, using eTag $eTag)");
+				
+				my $http = Slim::Networking::Async::HTTP->new;
+				my $request = HTTP::Request->new( DELETE => BURL . "/playlists/$uuid/items/$trackIdOrIndex?countryCode=$countryCode" );
+				$request->header( 'Authorization' => 'Bearer ' . $token );
+				$request->header( 'If-None-Match' => $eTag ) if $eTag;
+				$http->send_request( {
+					request => $request,
+					onBody => sub { $cb->(); },
+					onError => sub { $cb->($_[1]); },
+				} );
+			}
+		}, sub {
+			$cb->($_[1]);
+		} )->get(BURL . "/playlists/$uuid/items?countryCode=$countryCode&limit=1", %headers); 
+	} );	
 }
 
 sub getTrackUrl {
