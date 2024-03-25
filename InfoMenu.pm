@@ -61,8 +61,7 @@ sub menuInfoWeb {
 				$action = (grep { $_->{id} == $id && ($type =~ /$_->{type}/i || !$_->{type}) } @$favorites) ? 'remove' : 'add';
 			}
 
-			my $title = $action eq 'remove' ? cstring($client, 'PLUGIN_FAVORITES_REMOVE') : cstring($client, 'PLUGIN_FAVORITES_SAVE');
-			$title .= ' (' . cstring($client, 'PLUGIN_TIDAL_ON_TIDAL') . ')';
+			my $title = $action eq 'add' ? cstring($client, 'PLUGIN_TIDAL_ADD_TO_FAVORITES') : cstring($client, 'PLUGIN_TIDAL_REMOVE_FROM_FAVORITES');
 
 			my $items = [];
 			
@@ -72,7 +71,8 @@ sub menuInfoWeb {
 			};
 
 			if ($request->getParam('menu')) {
-				push @$items, { %$item, 
+				push @$items, { 
+					%$item, 
 					isContextMenu => 1,
 					refresh => 1,
 					jive => {
@@ -86,20 +86,25 @@ sub menuInfoWeb {
 						},
 					},
 				};
+				# TODO: add to playist in Jive as well...
 			} else {
-				push @$items, ( { %$item,
+				push @$items, { 
+					%$item,
 					url => sub {
 						my ($client, $ucb) = @_;
 						$api->updateFavorite( sub {
 							_completed($client, $ucb);
 						}, $action, $type, $id );
 					},
-				}, { 
+				};
+					
+				# only add tracks to playlists
+				push @$items, {
 					type => 'link',
-					name => cstring($client, 'ADD_THIS_SONG_TO_PLAYLIST') . ' (' . cstring($client, 'PLUGIN_TIDAL_ON_TIDAL') . ')',
+					name => cstring($client, 'PLUGIN_TIDAL_ADD_TO_PLAYLIST'),
 					url => \&addToPlaylist,
 					passthrough => [ { id => $id } ],
-				} );
+				} if $type =~ /track/;
 			}
 
 			my $method;
@@ -174,14 +179,15 @@ sub addToPlaylist {
 sub menuInfoJive {
 	my $request = shift;
 
-	my $id = $request->getParam('id');
 	my $api = Plugins::TIDAL::Plugin::getAPIHandler($request->client);
 	my $action = $request->getParam('_action');
 	
 	if ($action =~ /removeTrack/ ) {
 		my $playlistId = $request->getParam('playlistId');
-		$api->updatePlaylist( sub { }, 'del', $playlistId, $id );
+		my $index = $request->getParam('index');
+		$api->updatePlaylist( sub { }, 'del', $playlistId, $index );
 	} else {
+		my $id = $request->getParam('id');		
 		my $type = $request->getParam('type');
 		$api->updateFavorite( sub { }, $action, $type, $id );
 	}
@@ -355,7 +361,7 @@ sub _menuTrackInfo {
 	if ($params->{playlistId} ) {
 		my $item = {
 			type => 'link',
-			name => cstring($api->client, 'REMOVE_THIS_SONG_FROM_PLAYLIST') . ' (' . cstring($api->client, 'PLUGIN_TIDAL_ON_TIDAL') . ')',
+			name => cstring($api->client, 'PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST'),
 		};
 			
 		if ($params->{menu}) {
@@ -379,7 +385,7 @@ sub _menuTrackInfo {
 					my ($client, $cb, $args, $params) = @_;
 					$api->updatePlaylist( sub {
 						_completed($api->client, $cb);
-					}, 'del', $params->{playlistId}, $params->{id} );
+					}, 'del', $params->{playlistId}, $params->{index} );
 				},	
 				passthrough => [ $params ],
 			}

@@ -240,3 +240,19 @@ PLUGIN_TIDAL_ON_TIDAL
 	PL	W usłudze TIDAL
 	RU	На TIDAL
 	SV	Om TIDAL
+
+PLUGIN_TIDAL_ADD_TO_FAVORITES
+	EN	Add to Tidal favorites
+	FR	Ajouter aux favoris Tidal
+
+PLUGIN_TIDAL_REMOVE_FROM_FAVORITES
+	EN	Remove from Tidal favorites
+	FR	Supprimer des favoris Tidal
+
+PLUGIN_TIDAL_ADD_TO_PLAYLIST
+	EN	Add to a Tidal playlist
+	FR	Ajouter à une liste de lecture Tidal
+
+PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST
+	EN	Remove from this playlist
+	FR	Supprimer de cett liste de lecture
