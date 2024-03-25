@@ -162,7 +162,7 @@ PLUGIN_TIDAL_PROGRESS_READ_ALBUMS
 
 PLUGIN_TIDAL_ARTISTS_PROGRESS
 	CS	Interpeti TIDALu
-	DA	Tidal Artister
+	DA	TIDAL Artister
 	DE	TIDAL Interpreten
 	EN	TIDAL Artists
 	FR	Artistes TIDAL
@@ -242,17 +242,21 @@ PLUGIN_TIDAL_ON_TIDAL
 	SV	Om TIDAL
 
 PLUGIN_TIDAL_ADD_TO_FAVORITES
-	EN	Add to Tidal favorites
-	FR	Ajouter aux favoris Tidal
+	DE	Zu TIDAL Favoriten hinzufügen
+	EN	Add to TIDAL favorites
+	FR	Ajouter aux favoris TIDAL
 
 PLUGIN_TIDAL_REMOVE_FROM_FAVORITES
-	EN	Remove from Tidal favorites
-	FR	Supprimer des favoris Tidal
+	DE	Aus TIDAL Favoriten entfernen
+	EN	Remove from TIDAL favorites
+	FR	Supprimer des favoris TIDAL
 
 PLUGIN_TIDAL_ADD_TO_PLAYLIST
-	EN	Add to a Tidal playlist
-	FR	Ajouter à une liste de lecture Tidal
+	DE	Zu TIDAL Wiedergabeliste hinzufügen
+	EN	Add to a TIDAL playlist
+	FR	Ajouter à une liste de lecture TIDAL
 
 PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST
+	DE	Aus TIDAL Wiedergabeliste entfernen
 	EN	Remove from this playlist
 	FR	Supprimer de cett liste de lecture

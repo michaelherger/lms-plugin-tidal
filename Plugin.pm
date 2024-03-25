@@ -351,7 +351,7 @@ sub trackInfoMenu {
 			query => $title,
 		} ],
 	} if $title;
-	
+
 	# if we are playing a tidal track, then we can add it to favorites or playlists
 	if ( $url =~ m|tidal://| ) {
 		unshift @$items, ( {
@@ -382,7 +382,7 @@ sub _completed {
 			name => cstring($client, 'COMPLETE'),
 		}],
 	});
-}	
+}
 
 sub addPlayingToFavorites {
 	my ($client, $cb, $args, $params) = @_;
@@ -401,7 +401,7 @@ sub addPlayingToPlaylist {
 	my $id = Plugins::TIDAL::ProtocolHandler::getId($params->{url});
 	return _completed($client, $cb) unless $id;
 
-	addToPlaylist($client, $cb, { }, { id => $id }),
+	Plugins::TIDAL::InfoMenu::addToPlaylist($client, $cb, { }, { id => $id }),
 }
 
 sub artistInfoMenu {
@@ -703,11 +703,11 @@ sub getPlaylist {
 
 	my $api = getAPIHandler($client);
 
-	# we'll only set playlist id we own it so that we can remove track later		
+	# we'll only set playlist id we own it so that we can remove track later
 	my $renderArgs = {
 		playlistId => $params->{uuid}
 	} if $api->userId eq $params->{creatorId};
-	
+
 	$api->playlist(sub {
 		my $items = _renderTracks($_[0], $renderArgs);
 		$cb->( {
@@ -872,12 +872,12 @@ sub _renderTracks {
 	$args ||= {};
 
 	my $index = 0;
-	
+
 	return [ map {
-		# due to the need of an index when deleting a track from a playlist (...) 
+		# due to the need of an index when deleting a track from a playlist (...)
 		# we insert it here for convenience, but we could search the trackId index
 		# the whole playlist that should be cached...
-		_renderTrack($_, $args->{addArtistToTitle}, $args->{playlistId}, $index++);	
+		_renderTrack($_, $args->{addArtistToTitle}, $args->{playlistId}, $index++);
 	} @$tracks ];
 }
 
@@ -887,14 +887,14 @@ sub _renderTrack {
 	my $title = $item->{title};
 	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
 	my $url = "tidal://$item->{id}." . Plugins::TIDAL::API::getFormat();
-	
+
 	my $fixedParams = {
 		playlistId => $playlistId,
 		index => $index,
 	} if $playlistId;
-	
+
 	$fixedParams->{type} = 'tracks';
-	
+
 	return {
 		name => $title,
 		type => 'audio',
@@ -910,7 +910,7 @@ sub _renderTrack {
 			info => {
 				command   => ['tidal_info', 'items'],
 				fixedParams => {
-					%$fixedParams, 
+					%$fixedParams,
 					id => $item->{id},
 				},
 			},

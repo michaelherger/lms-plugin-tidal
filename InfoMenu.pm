@@ -24,10 +24,6 @@ tie %rootFeeds, 'Tie::Cache::LRU', 64;
 sub init {
 	my $class = shift;
 
-#  |requires Client
-#  |  |is a Query
-#  |  |  |has Tags
-#  |  |  |  |Function to call
 	Slim::Control::Request::addDispatch( [ 'tidal_info', 'items', '_index', '_quantity' ],	[ 1, 1, 1, \&menuInfoWeb ]	);
 	Slim::Control::Request::addDispatch( [ 'tidal_info', 'jive', '_action' ],	[ 1, 1, 1, \&menuInfoJive ]	);
 	Slim::Control::Request::addDispatch( [ 'tidal_browse', 'items' ],	[ 1, 1, 1, \&menuBrowse ]	);
@@ -64,15 +60,15 @@ sub menuInfoWeb {
 			my $title = $action eq 'add' ? cstring($client, 'PLUGIN_TIDAL_ADD_TO_FAVORITES') : cstring($client, 'PLUGIN_TIDAL_REMOVE_FROM_FAVORITES');
 
 			my $items = [];
-			
-			my $item = { 
+
+			my $item = {
 				type => 'link',
 				name => $title,
 			};
 
 			if ($request->getParam('menu')) {
-				push @$items, { 
-					%$item, 
+				push @$items, {
+					%$item,
 					isContextMenu => 1,
 					refresh => 1,
 					jive => {
@@ -88,7 +84,7 @@ sub menuInfoWeb {
 				};
 				# TODO: add to playist in Jive as well...
 			} else {
-				push @$items, { 
+				push @$items, {
 					%$item,
 					url => sub {
 						my ($client, $ucb) = @_;
@@ -97,7 +93,7 @@ sub menuInfoWeb {
 						}, $action, $type, $id );
 					},
 				};
-					
+
 				# only add tracks to playlists
 				push @$items, {
 					type => 'link',
@@ -149,16 +145,16 @@ sub menuInfoWeb {
 
 sub addToPlaylist {
 	my ($client, $cb, $args, $params) = @_;
-	
+
 	my $api = Plugins::TIDAL::Plugin::getAPIHandler($client);
 
 	$api->getFavorites( sub {
 		my $items = [];
-		
+
 		# only present playlist that we have the right to modify
 		foreach my $item ( @{$_[0] || {}} ) {
 			next if $item->{creator}->{id} ne $api->userId;
-		
+
 			push @$items, {
 				name => $item->{title},
 				url => sub {
@@ -166,7 +162,7 @@ sub addToPlaylist {
 					$api->updatePlaylist( sub {
 						_completed($client, $cb);
 					}, 'add', $params->{uuid}, $params->{trackId} );
-				},	
+				},
 				image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 				passthrough => [ { trackId => $params->{id}, uuid => $item->{uuid} } ],
 			};
@@ -181,18 +177,18 @@ sub menuInfoJive {
 
 	my $api = Plugins::TIDAL::Plugin::getAPIHandler($request->client);
 	my $action = $request->getParam('_action');
-	
+
 	if ($action =~ /removeTrack/ ) {
 		my $playlistId = $request->getParam('playlistId');
 		my $index = $request->getParam('index');
 		$api->updatePlaylist( sub { }, 'del', $playlistId, $index );
 	} else {
-		my $id = $request->getParam('id');		
+		my $id = $request->getParam('id');
 		my $type = $request->getParam('type');
 		$api->updateFavorite( sub { }, $action, $type, $id );
 	}
 }
-	
+
 sub menuBrowse {
 	my $request = shift;
 
@@ -356,16 +352,16 @@ sub _menuTrackInfo {
 	# play/add/add_next options except for skins that don't want it
 	my $base = _menuBase($api->client, 'track', $id, $params);
 	push @$items, @$base if @$base;
-	
+
 	# if we have a playlist id, then we might remove that track from playlist
 	if ($params->{playlistId} ) {
 		my $item = {
 			type => 'link',
 			name => cstring($api->client, 'PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST'),
 		};
-			
+
 		if ($params->{menu}) {
-			push @$items, { %$item, 
+			push @$items, { %$item,
 				isContextMenu => 1,
 				refresh => 1,
 				jive => {
@@ -380,18 +376,18 @@ sub _menuTrackInfo {
 				},
 			}
 		} else {
-			push @$items, { %$item, 
+			push @$items, { %$item,
 				url => sub {
 					my ($client, $cb, $args, $params) = @_;
 					$api->updatePlaylist( sub {
 						_completed($api->client, $cb);
 					}, 'del', $params->{playlistId}, $params->{index} );
-				},	
+				},
 				passthrough => [ $params ],
 			}
 		}
 	}
-	
+
 	push @$items, ( {
 		type => 'link',
 		name =>  $track->{album},
@@ -640,7 +636,7 @@ sub _completed {
 			name => cstring($client, 'COMPLETE'),
 		}],
 	});
-}	
+}
 
 
 1;

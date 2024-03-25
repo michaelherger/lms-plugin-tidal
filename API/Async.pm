@@ -18,6 +18,8 @@ use Slim::Utils::Strings qw(string);
 
 use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL USER_CONTENT_TTL);
 
+use constant CAN_MORE_HTTP_VERBS => Slim::Networking::SimpleAsyncHTTP->can('delete');
+
 {
 	__PACKAGE__->mk_accessor( rw => qw(
 		client
@@ -346,7 +348,7 @@ sub getFavorites {
 
 			if ($timestamp > $cached->{timestamp}) {
 				# TODO: this is suffering from the same issue as Deezer: the _get() will use cache and
-				# playlist content is not updated. I had to do my own cache for playlist 
+				# playlist content is not updated. I had to do my own cache for playlist
 				$lookupSub->();
 			}
 			else {
@@ -400,56 +402,35 @@ sub getLatestCollectionTimestamp {
 sub updateFavorite {
 	my ($self, $cb, $action, $type, $id) = @_;
 
-	$self->getToken(sub {
-		my ($token) = @_;
-
-		if (!$token) {
-			my $error = $1 || 'NO_ACCESS_TOKEN';
-			$error = 'NO_ACCESS_TOKEN' if $error !~ /429/;
-			return $cb->($error);
-		}
-
-		my $userId = $self->userId;
-		my $countryCode = Plugins::TIDAL::API->getCountryCode($self->userId);
-		my %headers = ( 'Authorization' => 'Bearer ' . $token );
+	my $userId = $self->userId;
 
 =comment
 		# TODO: make sure we'll force an update check next time
 		my $updated = $self->updated;
 		$self->updated($updated . "$type:") unless $updated =~ /$type/;
 =cut
-		if ($action =~ /add/) { 
-			# well... we have a trailing 's' (I know this is hacky... and bad)
-			my $key = substr($type, 0, -1) . 'Ids';
-			
-			my $query = complex_to_query( {
-				$key => $id,
-				onArtifactNotFound => 'SKIP',
-			} );
+	if ($action =~ /add/) {
+		# well... we have a trailing 's' (I know this is hacky... and bad)
+		my $key = substr($type, 0, -1) . 'Ids';
 
-			$headers{'Content-Type'} = 'application/x-www-form-urlencoded';
-			main::INFOLOG && $log->is_info && $log->info("POST /users/$userId/favorites/$type?countryCode=$countryCode with $query");
-			
-			Slim::Networking::SimpleAsyncHTTP->new(	sub {
-				$cb->(); 
-			}, sub {
-				$cb->($_[1]); 
-			} )->post(BURL . "/users/$userId/favorites/$type?countryCode=$countryCode", %headers, $query); 				
-		}
-		else {	
-			# no DELETE method in SimpleAsync
-			main::INFOLOG && $log->is_info && $log->info("DELETE /users/$userId/favorites/$type/$id?countryCode=$countryCode");
-			
-			my $http = Slim::Networking::Async::HTTP->new;
-			my $request = HTTP::Request->new( DELETE => BURL . "/users/$userId/favorites/$type/$id?countryCode=$countryCode" );
-			$request->header( 'Authorization' => 'Bearer ' . $token);
-			$http->send_request( {
-				request => $request,
-				onBody  => $cb,
-				onError => sub { $cb->($_[1]); }
-			} );
-		}
-	} );
+		my $params = {
+			$key => $id,
+			onArtifactNotFound => 'SKIP',
+		};
+
+		my $headers = { 'Content-Type' => 'application/x-www-form-urlencoded' };
+
+		$self->_post("/users/$userId/favorites/$type",
+			sub { $cb->() },
+			$params,
+			$headers,
+		);
+	}
+	else {
+		$self->_delete("/users/$userId/favorites/$type/$id",
+			sub { $cb->() },
+		);
+	}
 }
 
 sub updatePlaylist {
@@ -459,63 +440,50 @@ sub updatePlaylist {
 	# TODO: I had to do a dedicated cache for playlist a while ago and that's useful
 	# as we need here to invalidate what is cached.
 	$cache->remove('tidal_playlist_' . $id);
-=cut	
-	
-	$self->getToken( sub {
-		my ($token) = @_;
+=cut
 
-		if (!$token) {
-			my $error = $1 || 'NO_ACCESS_TOKEN';
-			$error = 'NO_ACCESS_TOKEN' if $error !~ /429/;
-			return $cb->($error);
-		}
-
-		my $countryCode = Plugins::TIDAL::API->getCountryCode($self->userId);
-		my %headers = ( 'Authorization' => 'Bearer ' . $token );
-		
-		# need to get e-tag first (probably can't cache that...)
-		Slim::Networking::SimpleAsyncHTTP->new(	sub {
-			my $eTag = $_[0]->headers->header('etag');
+	$self->_get("/playlists/$uuid/items",
+		sub {
+			my ($result, $response) = @_;
+			my $eTag = $response->headers->header('etag');
 			$eTag =~ s/"//g;
 
 			# and yes, you're not dreaming, the Tidal API does not allow you to delete
-			# a track in a playlist by it's id, you need to provide the item's *index* 
+			# a track in a playlist by it's id, you need to provide the item's *index*
 			# in the list... OMG
 			if ($action =~ 'add') {
-				my $query = complex_to_query( {
+				my $params => {
 					trackIds => $trackIdOrIndex,
 					onDupes => 'SKIP',
 					onArtifactNotFound => 'SKIP',
-				} );
-				
-				$headers{'Content-Type'} = 'application/x-www-form-urlencoded';
+				};
+
+				my %headers = (
+					'Content-Type' => 'application/x-www-form-urlencoded',
+				);
 				$headers{'If-None-Match'} = $eTag if $eTag;
-			
-				main::INFOLOG && $log->is_info && $log->info("POST /playlists/$uuid/items?countryCode=$countryCode, using query '$query' and eTag $eTag)");
-				Slim::Networking::SimpleAsyncHTTP->new(	sub {
-					$cb->(); 
-				}, sub {
-					$cb->($_[1]); 
-				} )->post(BURL . "/playlists/$uuid/items?countryCode=$countryCode&limit=1", %headers, $query); 				
-			}	 
-			else {
-				# no DELETE method in SimpleAsync
-				main::INFOLOG && $log->is_info && $log->info("DELETE /playlists/$uuid/items/$trackIdOrIndex?countryCode=$countryCode, using eTag $eTag)");
-				
-				my $http = Slim::Networking::Async::HTTP->new;
-				my $request = HTTP::Request->new( DELETE => BURL . "/playlists/$uuid/items/$trackIdOrIndex?countryCode=$countryCode" );
-				$request->header( 'Authorization' => 'Bearer ' . $token );
-				$request->header( 'If-None-Match' => $eTag ) if $eTag;
-				$http->send_request( {
-					request => $request,
-					onBody => sub { $cb->(); },
-					onError => sub { $cb->($_[1]); },
-				} );
+
+				$self->_post("/playlists/$uuid/items",
+					sub { $cb->() },
+					$params,
+					\%headers,
+				);
 			}
-		}, sub {
+			else {
+				my %headers;
+				$headers{'If-None-Match'} = $eTag if $eTag;
+
+				$self->_delete("/playlists/$uuid/items/$trackIdOrIndex",
+					sub { $cb->() },
+					{},
+					\%headers,
+				);
+			}
+		},
+		sub {
 			$cb->($_[1]);
-		} )->get(BURL . "/playlists/$uuid/items?countryCode=$countryCode&limit=1", %headers); 
-	} );	
+		},
+	);
 }
 
 sub getTrackUrl {
@@ -541,6 +509,30 @@ sub getToken {
 
 sub _get {
 	my ( $self, $url, $cb, $params ) = @_;
+	$self->_call($url, $cb, $params);
+}
+
+sub _post {
+	my ( $self, $url, $cb, $params, $headers ) = @_;
+	$params ||= {};
+	$params->{_method} = 'post';
+	$params->{_nocache} = 1;
+	$self->_call($url, $cb, $params, $headers);
+}
+
+sub _delete { if (CAN_MORE_HTTP_VERBS) {
+	my ( $self, $url, $cb, $params, $headers ) = @_;
+	$params ||= {};
+	$params->{_method} = 'delete';
+	$params->{_nocache} = 1;
+	$self->_call($url, $cb, $params, $headers);
+} else {
+	$log->error('Your LMS does not support the DELETE http verb yet - please update!');
+	return $_[2]->();
+} }
+
+sub _call {
+	my ( $self, $url, $cb, $params, $headers ) = @_;
 
 	$self->getToken(sub {
 		my ($token) = @_;
@@ -550,20 +542,20 @@ sub _get {
 			$error = 'NO_ACCESS_TOKEN' if $error !~ /429/;
 
 			$cb->({
-				name => string('Did not get a token' . $error),
-				type => 'text'
+				error => 'Did not get a token ' . $error,
 			});
 		}
 		else {
+			$params ||= {};
 			$params->{countryCode} ||= Plugins::TIDAL::API->getCountryCode($self->userId);
 
-			my %headers = (
-				'Authorization' => 'Bearer ' . $token,
-			);
+			$headers ||= {};
+			$headers->{Authorization} = 'Bearer ' . $token;
 
 			my $ttl = delete $params->{_ttl} || DEFAULT_TTL;
 			my $noCache = delete $params->{_nocache};
 			my $personalCache = delete $params->{_personal} ? ($self->userId . ':') : '';
+			my $method = delete $params->{_method} || 'get';
 
 			$params->{limit} ||= DEFAULT_LIMIT;
 
@@ -595,18 +587,18 @@ sub _get {
 				return $cb->($cached);
 			}
 
-			main::INFOLOG && $log->is_info && $log->info("Getting $url?$query");
+			main::INFOLOG && $log->is_info && $log->info("$method $url?$query");
 
-			Slim::Networking::SimpleAsyncHTTP->new(
+			my $http = Slim::Networking::SimpleAsyncHTTP->new(
 				sub {
 					my $response = shift;
 
-					my $result = eval { from_json($response->content) };
+					my $result = eval { from_json($response->content) } if $response->content;
 
 					$@ && $log->error($@);
 					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
 
-					if ($maxLimit && ref $result eq 'HASH' && $maxLimit > $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - DEFAULT_LIMIT > 0) {
+					if ($maxLimit && $result && ref $result eq 'HASH' && $maxLimit > $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - DEFAULT_LIMIT > 0) {
 						my $remaining = $result->{totalNumberOfItems} - DEFAULT_LIMIT;
 						main::INFOLOG && $log->is_info && $log->info("We need to page to get $remaining more results");
 
@@ -649,7 +641,7 @@ sub _get {
 
 					$cache->set($cacheKey, $result, $ttl) unless $noCache;
 
-					$cb->($result);
+					$cb->($result, $response);
 				},
 				sub {
 					my ($http, $error) = @_;
@@ -660,9 +652,16 @@ sub _get {
 					$cb->();
 				},
 				{
-					cache => 1,
+					cache => ($method eq 'get' && !$noCache) ? 1 : 0,
 				}
-			)->get(BURL . "$url?$query", %headers);
+			);
+
+			if ($method eq 'post') {
+				$http->$method(BURL . $url, %$headers, $query);
+			}
+			else {
+				$http->$method(BURL . "$url?$query", %$headers);
+			}
 		}
 	});
 }
