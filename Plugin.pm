@@ -32,8 +32,10 @@ sub initPlugin {
 	if (main::WEBUI) {
 		require Plugins::TIDAL::Settings;
 		require Plugins::TIDAL::Settings::Auth;
+		require Plugins::TIDAL::InfoMenu;
 		Plugins::TIDAL::Settings->new();
 		Plugins::TIDAL::Settings::Auth->new();
+		Plugins::TIDAL::InfoMenu->init();
 	}
 
 	Slim::Player::ProtocolHandlers->registerHandler('tidal', 'Plugins::TIDAL::ProtocolHandler');
@@ -349,12 +351,57 @@ sub trackInfoMenu {
 			query => $title,
 		} ],
 	} if $title;
+	
+	# if we are playing a tidal track, then we can add it to favorites or playlists
+	if ( $url =~ m|tidal://| ) {
+		unshift @$items, ( {
+			type => 'link',
+			name => cstring($client, 'PLUGIN_FAVORITES_SAVE') . ' (' . cstring($client, 'PLUGIN_TIDAL_ON_TIDAL') . ')',
+			url => \&addPlayingToFavorites,
+			passthrough => [ { url => $url } ],
+		}, {
+			type => 'link',
+			name => cstring($client, 'ADD_THIS_SONG_TO_PLAYLIST') . ' (' . cstring($client, 'PLUGIN_TIDAL_ON_TIDAL') . ')',
+			url => \&addPlayingToPlaylist,
+			passthrough => [ { url => $url } ],
+		} );
+	}
 
 	return {
 		type => 'outlink',
 		items => $items,
 		name => cstring($client, 'PLUGIN_TIDAL_ON_TIDAL'),
 	};
+}
+
+sub _completed {
+	my ($client, $cb) = @_;
+	$cb->({
+		items => [{
+			type => 'text',
+			name => cstring($client, 'COMPLETE'),
+		}],
+	});
+}	
+
+sub addPlayingToFavorites {
+	my ($client, $cb, $args, $params) = @_;
+
+	my $id = Plugins::TIDAL::ProtocolHandler::getId($params->{url});
+	return _completed($client, $cb) unless $id;
+
+	Plugins::Deezer::Plugin::getAPIHandler($client)->updateFavorite( sub {
+		_completed($client, $cb);
+	}, 'add', 'tracks', $id );
+}
+
+sub addPlayingToPlaylist {
+	my ($client, $cb, $args, $params) = @_;
+
+	my $id = Plugins::Deezer::ProtocolHandler::getIdId($params->{url});
+	return _completed($client, $cb) unless $id;
+
+	addToPlaylist($client, $cb, { }, { id => $id }),
 }
 
 sub artistInfoMenu {
@@ -653,8 +700,16 @@ sub getMoodPlaylists {
 
 sub getPlaylist {
 	my ( $client, $cb, $args, $params ) = @_;
-	getAPIHandler($client)->playlist(sub {
-		my $items = _renderTracks($_[0], 1);
+
+	my $api = getAPIHandler($client);
+
+	# we'll only set playlist id we own it so that we can remove track later		
+	my $renderArgs = {
+		playlistId => $params->{id}
+	} if $api->userId eq $params->{creatorId};
+	
+	$api->playlist(sub {
+		my $items = _renderTracks($_[0], $renderArgs);
 		$cb->( {
 			items => $items
 		} );
@@ -721,7 +776,7 @@ sub _renderItem {
 	my $type = Plugins::TIDAL::API->typeOfItem($item);
 
 	if ($type eq 'track') {
-		return _renderTrack($item, $args->{addArtistToTitle});
+		return _renderTrack($item, $args->{addArtistToTitle}, $args->{playlistId});
 	}
 	elsif ($type eq 'album') {
 		return _renderAlbum($item, $args->{addArtistToTitle});
@@ -756,10 +811,20 @@ sub _renderPlaylist {
 		line1 => $item->{title},
 		line2 => join(', ', map { $_->{name} } @{$item->{promotedArtists} || []}),
 		favorites_url => 'tidal://playlist:' . $item->{uuid},
+		play => 'tidal://playlist:' . $item->{uuid},
 		type => 'playlist',
 		url => \&getPlaylist,
 		image => Plugins::TIDAL::API->getImageUrl($item),
-		passthrough => [ { uuid => $item->{uuid} } ],
+		passthrough => [ { uuid => $item->{uuid}, creatorId => $item->{creator}->{id} } ],
+		itemActions => {
+			info => {
+				command   => ['tidal_info', 'items'],
+				fixedParams => {
+					type => 'playlists',
+					id => $item->{uuid},
+				},
+			},
+		},
 	};
 }
 
@@ -782,23 +847,37 @@ sub _renderAlbum {
 		line1 => $item->{title},
 		line2 => $item->{artist}->{name},
 		favorites_url => 'tidal://album:' . $item->{id},
+		favorites_title => $item->{title} . ' - ' . $item->{artist}->{name},
+		favorites_type => 'playlist',
 		type => 'playlist',
 		url => \&getAlbum,
 		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 		passthrough => [{ id => $item->{id} }],
+		# we need a 'play' for M(ore) to appear
+		play => 'tidal://album:' . $item->{id},
+		itemActions => {
+			info => {
+				command   => ['tidal_info', 'items'],
+				fixedParams => {
+					type => 'albums',
+					id => $item->{id},
+				},
+			},
+		},
 	};
 }
 
 sub _renderTracks {
-	my ($tracks, $addArtistToTitle) = @_;
+	my ($tracks, $args) = @_;
+	$args ||= {};
 
 	return [ map {
-		_renderTrack($_, $addArtistToTitle);
+		_renderTrack($_, $args->{addArtistToTitle}, $args->{playlistId});
 	} @$tracks ];
 }
 
 sub _renderTrack {
-	my ($item, $addArtistToTitle) = @_;
+	my ($item, $addArtistToTitle, $playlistId) = @_;
 
 	my $title = $item->{title};
 	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
@@ -806,6 +885,8 @@ sub _renderTrack {
 
 	return {
 		name => $title,
+		type => 'audio',
+		favorites_title => $item->{title} . ' - ' . $item->{artist}->{name},
 		line1 => $item->{title},
 		line2 => $item->{artist}->{name},
 		on_select => 'play',
@@ -813,6 +894,16 @@ sub _renderTrack {
 		play => $url,
 		playall => 1,
 		image => $item->{cover},
+		itemActions => {
+			info => {
+				command   => ['tidal_info', 'items'],
+				fixedParams => {
+					type => 'tracks',
+					id => $item->{id},
+					playlistId => $playlistId,
+				},
+			},
+		},
 	};
 }
 
@@ -863,16 +954,28 @@ sub _renderArtist {
 		passthrough => [{ id => $item->{id} }],
 	};
 
+	my $itemActions = {
+		info => {
+			command   => ['tidal_info', 'items'],
+			fixedParams => {
+				type => 'artists',
+				id => $item->{id},
+			},
+		},
+	};
+
 	return scalar @$items > 1
 	? {
 		name => $item->{name},
 		type => 'outline',
 		items => $items,
+		itemActions => $itemActions,
 		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 	}
 	: {
 		%{$items->[0]},
 		name => $item->{name},
+		itemActions => $itemActions,
 		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 	};
 }
