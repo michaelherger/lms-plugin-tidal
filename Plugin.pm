@@ -401,7 +401,7 @@ sub addPlayingToPlaylist {
 	my $id = Plugins::TIDAL::ProtocolHandler::getId($params->{url});
 	return _completed($client, $cb) unless $id;
 
-	Plugins::TIDAL::InfoMenu::addToPlaylist($client, $cb, { }, { id => $id }),
+	Plugins::TIDAL::InfoMenu::addToPlaylist($client, $cb, undef, { id => $id }),
 }
 
 sub artistInfoMenu {

@@ -25,7 +25,8 @@ sub init {
 	my $class = shift;
 
 	Slim::Control::Request::addDispatch( [ 'tidal_info', 'items', '_index', '_quantity' ],	[ 1, 1, 1, \&menuInfoWeb ]	);
-	Slim::Control::Request::addDispatch( [ 'tidal_info', 'jive', '_action' ],	[ 1, 1, 1, \&menuInfoJive ]	);
+	Slim::Control::Request::addDispatch( [ 'tidal_action', 'items', '_index', '_quantity' ],	[ 1, 1, 1, \&menuAction ]	);
+	Slim::Control::Request::addDispatch( [ 'tidal_action', '_action' ],	[ 1, 1, 1, \&menuAction ]	);
 	Slim::Control::Request::addDispatch( [ 'tidal_browse', 'items' ],	[ 1, 1, 1, \&menuBrowse ]	);
 	Slim::Control::Request::addDispatch( [ 'tidal_browse', 'playlist', '_method' ],	[ 1, 1, 1, \&menuBrowse ]	);
 }
@@ -58,17 +59,12 @@ sub menuInfoWeb {
 			}
 
 			my $title = $action eq 'add' ? cstring($client, 'PLUGIN_TIDAL_ADD_TO_FAVORITES') : cstring($client, 'PLUGIN_TIDAL_REMOVE_FROM_FAVORITES');
-
 			my $items = [];
-
-			my $item = {
-				type => 'link',
-				name => $title,
-			};
 
 			if ($request->getParam('menu')) {
 				push @$items, {
-					%$item,
+					type => 'link',
+					name => $title,
 					isContextMenu => 1,
 					refresh => 1,
 					jive => {
@@ -76,16 +72,28 @@ sub menuInfoWeb {
 						actions => {
 							go => {
 								player => 0,
-								cmd    => [ 'tidal_info', 'jive', $action ],
+								cmd    => [ 'tidal_action', $action ],
 								params => {	type => $type, id => $id }
 							}
 						},
 					},
 				};
-				# TODO: add to playist in Jive as well...
+
+				# only tracks can be added to playlist
+				push @$items, {
+					type => 'link',
+					name => cstring($client, 'PLUGIN_TIDAL_ADD_TO_PLAYLIST'),
+					itemActions => {
+						items => {
+							command     => ['tidal_action', 'items' ],
+							fixedParams => { action => 'add_to_playlist', id => $id },
+						},
+					},
+				} if $type =~ /track/;
 			} else {
 				push @$items, {
-					%$item,
+					type => 'link',
+					name => $title,
 					url => sub {
 						my ($client, $ucb) = @_;
 						$api->updateFavorite( sub {
@@ -144,7 +152,7 @@ sub menuInfoWeb {
 }
 
 sub addToPlaylist {
-	my ($client, $cb, $args, $params) = @_;
+	my ($client, $cb, undef, $params) = @_;
 
 	my $api = Plugins::TIDAL::Plugin::getAPIHandler($client);
 
@@ -155,37 +163,104 @@ sub addToPlaylist {
 		foreach my $item ( @{$_[0] || {}} ) {
 			next if $item->{creator}->{id} ne $api->userId;
 
-			push @$items, {
-				name => $item->{title},
-				url => sub {
-					my ($client, $cb, $args, $params) = @_;
-					$api->updatePlaylist( sub {
-						_completed($client, $cb);
-					}, 'add', $params->{uuid}, $params->{trackId} );
-				},
-				image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
-				passthrough => [ { trackId => $params->{id}, uuid => $item->{uuid} } ],
-			};
+			# we don't have to create a special RPC menu/action, we could simply let the
+			# XML menu play, but the exit of the action is less user friendly as we land
+			# on "complete" page like for Web::XMLBrowser
+
+			if ($params->{menu}) {
+				push @$items, {
+					type => 'link',
+					name => $item->{title},
+					isContextMenu => 1,
+					refresh => 1,
+					image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
+					jive => {
+						nextWindow => 'grandparent',
+						actions => {
+							go => {
+								player => 0,
+								cmd    => [ 'tidal_action', 'add_track' ],
+								params => { id => $params->{id}, playlistId => $item->{uuid} },
+							}
+						},
+					},
+				};
+			}
+			else {
+				push @$items, {
+					name => $item->{title},
+					url => sub {
+						my ($client, $cb, $args, $params) = @_;
+						$api->updatePlaylist( sub {
+							_completed($client, $cb);
+						}, 'add', $params->{uuid}, $params->{trackId} );
+					},
+					image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
+					passthrough => [ { trackId => $params->{id}, uuid => $item->{uuid} } ],
+				};
+			}
 		}
 
 		$cb->( { items => $items } );
 	}, 'playlists' );
 }
 
-sub menuInfoJive {
+sub menuAction {
 	my $request = shift;
 
-	my $api = Plugins::TIDAL::Plugin::getAPIHandler($request->client);
-	my $action = $request->getParam('_action');
+	my $itemId = $request->getParam('item_id');
 
-	if ($action =~ /removeTrack/ ) {
-		my $playlistId = $request->getParam('playlistId');
-		my $index = $request->getParam('index');
-		$api->updatePlaylist( sub { }, 'del', $playlistId, $index );
+	# if we are re-drilling, no need to search, just get our anchor/root
+	if ( defined $itemId ) {
+		my ($key) = $itemId =~ /([^\.]+)/;
+		my $cached = ${$rootFeeds{$key}};
+		Slim::Control::XMLBrowser::cliQuery('tidal_action', $cached, $request);
+		return;
+	}
+
+	my $entity  = $request->getRequest(1);
+	my $id = $request->getParam('id');
+
+	# can be an action through a sub-feed (items) that needs to be displayed first,
+	# so we to be ready to re-drill, or can be a direct action
+	if ($entity eq 'items') {
+		my $action = $request->getParam('action');
+		main::INFOLOG && $log->is_info && $log->info("JSON RPC query items with action $action");
+
+		# we assume that only one controller wants to use a client at the same time
+		my $key = $request->client->id =~ s/://gr;
+		$request->addParam('item_id', $key);
+
+		# only items 'action' for now is to add to playlist
+		if ($action =~ /add_to_playlist/ ) {
+			Slim::Control::XMLBrowser::cliQuery( 'tidal_action', sub {
+				my ($client, $cb, $args) = @_;
+
+				addToPlaylist($client, sub {
+					my $feed = $_[0];
+					$rootFeeds{$key} = \$feed;
+					$cb->($feed);
+				}, undef, { menu => $request->getParam('menu'), id => $id } );
+			}, $request );
+		}
 	} else {
-		my $id = $request->getParam('id');
-		my $type = $request->getParam('type');
-		$api->updateFavorite( sub { }, $action, $type, $id );
+		my $api = Plugins::TIDAL::Plugin::getAPIHandler($request->client);
+		my $action = $request->getParam('_action');
+
+		main::INFOLOG && $log->is_info && $log->info("JSON RPC action $action for $id");
+
+		if ($action =~ /remove_track/ ) {
+			my $playlistId = $request->getParam('playlistId');
+			my $index = $request->getParam('index');
+			$api->updatePlaylist( sub { }, 'del', $playlistId, $index );
+		} elsif ($action =~ /add_track/ ) {
+			# this is only used if we have a direct RPC menu set in addToPlaylist
+			my $playlistId = $request->getParam('playlistId');
+			$api->updatePlaylist( sub { }, 'add', $playlistId, $id );
+		} else {
+			my $type = $request->getParam('type');
+			$api->updateFavorite( sub { }, $action, $type, $id );
+		}
 	}
 }
 
@@ -219,7 +294,8 @@ sub menuBrowse {
 	# breadcrums *before* we arrive here, in the _renderXXX familiy but I don't
 	# know how so we have to build our own "fake" dispatch just for that
 	# we only need to do that when we have to redescend further that hierarchy,
-	# not when it's one shot
+	# not when it's one shot and we assume that only one controller wants to use
+	# a client at the same time
 	my $key = $client->id =~ s/://gr;
 	$request->addParam('item_id', $key);
 
@@ -355,13 +431,10 @@ sub _menuTrackInfo {
 
 	# if we have a playlist id, then we might remove that track from playlist
 	if ($params->{playlistId} ) {
-		my $item = {
-			type => 'link',
-			name => cstring($api->client, 'PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST'),
-		};
-
 		if ($params->{menu}) {
-			push @$items, { %$item,
+			push @$items, {
+				type => 'link',
+				name => cstring($api->client, 'PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST'),
 				isContextMenu => 1,
 				refresh => 1,
 				jive => {
@@ -369,14 +442,16 @@ sub _menuTrackInfo {
 					actions => {
 						go => {
 							player => 0,
-							cmd    => [ 'tidal_info', 'jive', 'removeTrack' ],
-							params => { id => $params->{id}, playlistId => $params->{playlistId} },
+							cmd    => [ 'tidal_action', 'remove_track' ],
+							params => { index => $params->{index}, playlistId => $params->{playlistId} },
 						}
 					},
 				},
 			}
 		} else {
-			push @$items, { %$item,
+			push @$items, {
+				type => 'link',
+				name => cstring($api->client, 'PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST'),
 				url => sub {
 					my ($client, $cb, $args, $params) = @_;
 					$api->updatePlaylist( sub {
