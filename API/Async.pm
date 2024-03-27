@@ -452,7 +452,7 @@ sub updatePlaylist {
 			# a track in a playlist by it's id, you need to provide the item's *index*
 			# in the list... OMG
 			if ($action =~ 'add') {
-				my $params => {
+				my $params = {
 					trackIds => $trackIdOrIndex,
 					onDupes => 'SKIP',
 					onArtifactNotFound => 'SKIP',
@@ -479,9 +479,6 @@ sub updatePlaylist {
 					\%headers,
 				);
 			}
-		},
-		sub {
-			$cb->($_[1]);
 		},
 	);
 }
