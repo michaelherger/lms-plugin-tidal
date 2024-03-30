@@ -53,7 +53,7 @@ sub menuInfoWeb {
 			my $action;
 
 			if ($type =~ /playlist/) {
-				$action = (grep { $_->{uuid} == $id } @$favorites) ? 'remove' : 'add';
+				$action = (grep { $_->{uuid} eq $id } @$favorites) ? 'remove' : 'add';
 			} else {
 				$action = (grep { $_->{id} == $id && ($type =~ /$_->{type}/i || !$_->{type}) } @$favorites) ? 'remove' : 'add';
 			}
@@ -156,11 +156,12 @@ sub addToPlaylist {
 
 	my $api = Plugins::TIDAL::Plugin::getAPIHandler($client);
 
+	# we use that API and not userPlaylist() because it checks for updates	
 	$api->getFavorites( sub {
 		my $items = [];
 
-		# only present playlist that we have the right to modify
 		foreach my $item ( @{$_[0] || {}} ) {
+			# only present playlist that we have the right to modify
 			next if $item->{creator}->{id} ne $api->userId;
 
 			# we don't have to create a special RPC menu/action, we could simply let the

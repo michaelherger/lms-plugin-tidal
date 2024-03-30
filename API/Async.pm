@@ -24,6 +24,7 @@ use constant CAN_MORE_HTTP_VERBS => Slim::Networking::SimpleAsyncHTTP->can('dele
 	__PACKAGE__->mk_accessor( rw => qw(
 		client
 		userId
+		updated
 	) );
 }
 
@@ -263,6 +264,9 @@ sub moodPlaylists {
 	});
 }
 
+# this one does not check for updates and this is the user's playlist, so the most
+# likely to change. See not on GetFavoritePlaylists, but I don't think this needs 
+# be used.
 sub userPlaylists {
 	my ($self, $cb, $userId) = @_;
 
@@ -291,6 +295,10 @@ sub playlistData {
 sub playlist {
 	my ($self, $cb, $uuid) = @_;
 
+	# we need to verify that the playlist has not been invalidated
+	my $cacheKey = 'tidal_playlist_refresh_' . $uuid;
+	my $refresh = $cache->get($cacheKey);
+
 	$self->_get("/playlists/$uuid/items", sub {
 		my $result = shift;
 
@@ -300,8 +308,11 @@ sub playlist {
 			$_->{type} && $_->{type} eq 'track'
 		} @{$result->{items} || []} ]) if $result;
 
+		$cache->remove($cacheKey) if $refresh;
+
 		$cb->($items || []);
 	},{
+		_refresh => $refresh,
 		limit => MAX_LIMIT,
 	});
 }
@@ -311,19 +322,37 @@ sub playlist {
 # lookup to get the latest timestamp first, then return from cache directly
 # if the list hasn't changed, or look up afresh if needed.
 sub getFavorites {
-	my ($self, $cb, $type, $drill) = @_;
+	my ($self, $cb, $type, $refresh) = @_;
 
 	return $cb->() unless $type;
 
 	my $userId = $self->userId || return $cb->();
 	my $cacheKey = "tidal_favs_$type:$userId";
 
+	# verify if that type has been updated and force refresh (don't confuse adding
+	# a playlist to favorites with changing the *content* of a playlist)
+	if ((my $updated = $self->updated) =~ /$type:/) {
+		$self->updated($updated =~ s/$type://r);
+		$refresh = 1;
+	}
+
 	my $lookupSub = sub {
+		my $timestamp = shift;
+
 		$self->_get("/users/$userId/favorites/$type", sub {
 			my $result = shift;
 
 			my $items = [ map { $_->{item} } @{$result->{items} || []} ] if $result;
 			$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $items && $type eq 'tracks';
+
+			# verify if home-made playlists need to be invalidated
+			if (defined $timestamp && $type =~ /playlist/) {
+				foreach my $playlist (@$items) {
+					next unless $playlist->{type} =~ /USER/ && str2time($playlist->{lastUpdated}) > $timestamp;
+					main::INFOLOG && $log->is_info && $log->info("Invalidating playlist $playlist->{uuid}");
+					$cache->set('tidal_playlist_refresh_' . $playlist->{uuid}, DEFAULT_TTL);
+				}
+			}
 
 			$cache->set($cacheKey, {
 				items => $items,
@@ -340,16 +369,15 @@ sub getFavorites {
 	# use cached data unless the collection has changed
 	my $cached = $cache->get($cacheKey);
 	if ($cached && ref $cached->{items}) {
-		# don't bother verifying timestamp when drilling down
-		return $cb->($cached->{items}) if $drill;
+		# don't bother verifying timestamp unless we're sure
+		return $cb->($cached->{items}) unless $refresh;
 
 		$self->getLatestCollectionTimestamp(sub {
-			my $timestamp = shift || 0;
+			my ($timestamp, $usertimestamp) = @_;
 
-			if ($timestamp > $cached->{timestamp}) {
-				# TODO: this is suffering from the same issue as Deezer: the _get() will use cache and
-				# playlist content is not updated. I had to do my own cache for playlist
-				$lookupSub->();
+			if ($timestamp > $cached->{timestamp} || ($type =~ /playlist/ && $usertimestamp > $cached->{timestamp})) {
+				main::INFOLOG && $log->is_info && $log->info("Collection of type '$type' has changed - updating");
+				$lookupSub->($cached->{timestamp});
 			}
 			else {
 				main::INFOLOG && $log->is_info && $log->info("Collection of type '$type' has not changed - using cached results");
@@ -367,36 +395,12 @@ sub getLatestCollectionTimestamp {
 
 	my $userId = $self->userId || return $cb->();
 
-	$self->_get("/users/$userId/favorites/$type", sub {
+	$self->_get("/users/$userId/favorites", sub {
 		my $result = shift;
-
-		my $latestUpdate;
-		eval {
-			if ($type eq 'playlists') {
-				my $items = $result->{items};
-
-				my $timestamp = reduce {
-					my $ta = ref $a ? maxstr($a->{created}, $a->{item}->{lastUpdated}) : $a;
-					my $tb = ref $b ? maxstr($b->{created}, $b->{item}->{lastUpdated}) : $b;
-					maxstr($ta, $tb);
-				} @$items;
-
-				$latestUpdate = str2time($timestamp) || 0;
-			}
-			else {
-				$latestUpdate = str2time($result->{items}->[0]->{created}) || 0;
-			}
-		};
-
-		($@ || !$latestUpdate) && $log->error("Failed to get '$type' metadata: $@");
-
-		$cb->($latestUpdate);
-	},{
-		order => 'DATE',
-		orderDirection => 'DESC',
-		limit => 4,
-		_nocache => 1,
-	});
+		my $key = 'updatedFavorite' . ucfirst($type);
+		# we always return as well the timestamp of home-made playlists
+		$cb->( str2time($result->{$key}) || 0, str2time($result->{updatedPlaylists}) || 0 );
+	}, { _nocache => 1 });
 }
 
 sub updateFavorite {
@@ -404,14 +408,12 @@ sub updateFavorite {
 
 	my $userId = $self->userId;
 
-=comment
-		# TODO: make sure we'll force an update check next time
-		my $updated = $self->updated;
-		$self->updated($updated . "$type:") unless $updated =~ /$type/;
-=cut
+	my $updated = $self->updated;
+	$self->updated($updated . "$type:") unless $updated =~ /$type/;
+
 	if ($action =~ /add/) {
 		# well... we have a trailing 's' (I know this is hacky... and bad)
-		my $key = substr($type, 0, -1) . 'Ids';
+		my $key = $type !~ /playlist/ ? substr($type, 0, -1) . 'Ids' : 'uuids';
 
 		my $params = {
 			$key => $id,
@@ -436,11 +438,9 @@ sub updateFavorite {
 sub updatePlaylist {
 	my ($self, $cb, $action, $uuid, $trackIdOrIndex) = @_;
 
-=comment
-	# TODO: I had to do a dedicated cache for playlist a while ago and that's useful
-	# as we need here to invalidate what is cached.
-	$cache->remove('tidal_playlist_' . $id);
-=cut
+	# mark that playlist as need to be refreshed. After the DEFAULT_TTL
+	# the _get will also have forgotten it, no need to cache beyond
+	$cache->set('tidal_playlist_refresh_' . $uuid, DEFAULT_TTL);
 
 	$self->_get("/playlists/$uuid/items",
 		sub {
@@ -551,6 +551,7 @@ sub _call {
 
 			my $ttl = delete $params->{_ttl} || DEFAULT_TTL;
 			my $noCache = delete $params->{_nocache};
+			my $refresh = delete $params->{_refresh};
 			my $personalCache = delete $params->{_personal} ? ($self->userId . ':') : '';
 			my $method = delete $params->{_method} || 'get';
 
@@ -577,7 +578,7 @@ sub _call {
 			# TODO - make sure we don't pass any of the keys prefixed with an underscore!
 			my $query = complex_to_query($params);
 
-			if (!$noCache && (my $cached = $cache->get($cacheKey))) {
+			if (!$noCache && !$refresh && (my $cached = $cache->get($cacheKey))) {
 				main::INFOLOG && $log->is_info && $log->info("Returning cached data for $url?$query");
 				main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($cached));
 

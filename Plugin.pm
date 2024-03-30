@@ -136,7 +136,11 @@ sub handleFeed {
 		name => cstring($client, 'PLAYLISTS'),
 		image => 'html/images/playlists.png',
 		type => 'link',
-		url => \&getFavoritePlaylists,
+		# I don't think that notion still exists. it seems to me that the
+		# users/playlist is not maintained anymore
+		# url => \&getFavoritePlaylists,
+		url => \&getFavorites,
+		passthrough => [{ type => 'playlists' }],
 	},{
 		name => cstring($client, 'ALBUMS'),
 		image => 'html/images/albums.png',
@@ -472,6 +476,11 @@ sub searchMenu {
 	};
 }
 
+# are you sure this is a category? What I see is that user-made playlists are
+# indeed included in favorites playlists, so this can be a convenient way to 
+# sort them, but we don't really need that as we don't differentiate between
+# the two and we don't let people set a list of other's playlists they wantarray
+# to display
 sub getFavoritePlaylists {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -526,7 +535,7 @@ sub getFavorites {
 		$cb->( {
 			items => $items
 		} );
-	}, $params->{type}, $args->{quantity} == 1 );
+	}, $params->{type}, $args->{quantity} != 1 );
 }
 
 sub getArtist {
