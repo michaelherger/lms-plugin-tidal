@@ -264,9 +264,8 @@ sub moodPlaylists {
 	});
 }
 
-# this one does not check for updates and this is the user's playlist, so the most
-# likely to change. See not on GetFavoritePlaylists, but I don't think this needs 
-# be used.
+# see comment on Plugin::GetFavoritesPlaylists
+=comment
 sub userPlaylists {
 	my ($self, $cb, $userId) = @_;
 
@@ -282,6 +281,7 @@ sub userPlaylists {
 		_ttl => 300,
 	})
 }
+=cut
 
 sub playlistData {
 	my ($self, $cb, $uuid) = @_;
@@ -346,9 +346,9 @@ sub getFavorites {
 			$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $items && $type eq 'tracks';
 
 			# verify if home-made playlists need to be invalidated
-			if (defined $timestamp && $type =~ /playlist/) {
+			if (defined $timestamp && $type eq 'playlists') {
 				foreach my $playlist (@$items) {
-					next unless $playlist->{type} =~ /USER/ && str2time($playlist->{lastUpdated}) > $timestamp;
+					next unless $playlist->{type} eq 'USER' && str2time($playlist->{lastUpdated}) > $timestamp;
 					main::INFOLOG && $log->is_info && $log->info("Invalidating playlist $playlist->{uuid}");
 					$cache->set('tidal_playlist_refresh_' . $playlist->{uuid}, DEFAULT_TTL);
 				}
@@ -373,9 +373,9 @@ sub getFavorites {
 		return $cb->($cached->{items}) unless $refresh;
 
 		$self->getLatestCollectionTimestamp(sub {
-			my ($timestamp, $usertimestamp) = @_;
+			my ($timestamp, $fullset) = @_;
 
-			if ($timestamp > $cached->{timestamp} || ($type =~ /playlist/ && $usertimestamp > $cached->{timestamp})) {
+			if ($timestamp > $cached->{timestamp} || ($type eq 'playlists' && $fullset->{updatedPlaylists} > $cached->{timestamp})) {
 				main::INFOLOG && $log->is_info && $log->info("Collection of type '$type' has changed - updating");
 				$lookupSub->($cached->{timestamp});
 			}
@@ -397,9 +397,9 @@ sub getLatestCollectionTimestamp {
 
 	$self->_get("/users/$userId/favorites", sub {
 		my $result = shift;
-		my $key = 'updatedFavorite' . ucfirst($type);
-		# we always return as well the timestamp of home-made playlists
-		$cb->( str2time($result->{$key}) || 0, str2time($result->{updatedPlaylists}) || 0 );
+		my $key = 'updatedFavorite' . ucfirst($type || '');
+		$result->{$_} = (str2time($result->{$_}) || 0) foreach (keys %$result);		
+		$cb->( $result->{$key}, $result );
 	}, { _nocache => 1 });
 }
 
@@ -407,13 +407,13 @@ sub updateFavorite {
 	my ($self, $cb, $action, $type, $id) = @_;
 
 	my $userId = $self->userId;
+	my $key = $type ne 'playlist' ? $type . 'Ids' : 'uuids';
+	$type .= 's';
 
 	my $updated = $self->updated;
 	$self->updated($updated . "$type:") unless $updated =~ /$type/;
 
-	if ($action =~ /add/) {
-		# well... we have a trailing 's' (I know this is hacky... and bad)
-		my $key = $type !~ /playlist/ ? substr($type, 0, -1) . 'Ids' : 'uuids';
+	if ($action eq 'add') {
 
 		my $params = {
 			$key => $id,
@@ -442,6 +442,7 @@ sub updatePlaylist {
 	# the _get will also have forgotten it, no need to cache beyond
 	$cache->set('tidal_playlist_refresh_' . $uuid, DEFAULT_TTL);
 
+	# we need an etag, so we need to do a request of one, not cached!
 	$self->_get("/playlists/$uuid/items",
 		sub {
 			my ($result, $response) = @_;
@@ -451,7 +452,7 @@ sub updatePlaylist {
 			# and yes, you're not dreaming, the Tidal API does not allow you to delete
 			# a track in a playlist by it's id, you need to provide the item's *index*
 			# in the list... OMG
-			if ($action =~ 'add') {
+			if ($action eq 'add') {
 				my $params = {
 					trackIds => $trackIdOrIndex,
 					onDupes => 'SKIP',
@@ -479,8 +480,11 @@ sub updatePlaylist {
 					\%headers,
 				);
 			}
-		},
-	);
+		}, { 
+		_nocache => 1,
+		limit => 1,
+		}
+	); 
 }
 
 sub getTrackUrl {

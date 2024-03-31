@@ -396,7 +396,7 @@ sub addPlayingToFavorites {
 
 	Plugins::TIDAL::Plugin::getAPIHandler($client)->updateFavorite( sub {
 		_completed($client, $cb);
-	}, 'add', 'tracks', $id );
+	}, 'add', 'track', $id );
 }
 
 sub addPlayingToPlaylist {
@@ -476,11 +476,9 @@ sub searchMenu {
 	};
 }
 
-# are you sure this is a category? What I see is that user-made playlists are
-# indeed included in favorites playlists, so this can be a convenient way to 
-# sort them, but we don't really need that as we don't differentiate between
-# the two and we don't let people set a list of other's playlists they wantarray
-# to display
+# I think that the /users/<id>/favorites/playlists returns everything because
+# all home-made playlist are in our favorites at least in the v1 interface.
+=comment
 sub getFavoritePlaylists {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -523,6 +521,7 @@ sub getFavoritePlaylists {
 		}
 	);
 }
+=cut
 
 sub getFavorites {
 	my ( $client, $cb, $args, $params ) = @_;
@@ -829,7 +828,7 @@ sub _renderPlaylist {
 			info => {
 				command   => ['tidal_info', 'items'],
 				fixedParams => {
-					type => 'playlists',
+					type => 'playlist',
 					id => $item->{uuid},
 				},
 			},
@@ -868,7 +867,7 @@ sub _renderAlbum {
 			info => {
 				command   => ['tidal_info', 'items'],
 				fixedParams => {
-					type => 'albums',
+					type => 'album',
 					id => $item->{id},
 				},
 			},
@@ -902,8 +901,6 @@ sub _renderTrack {
 		index => $index,
 	} if $playlistId;
 
-	$fixedParams->{type} = 'tracks';
-
 	return {
 		name => $title,
 		type => 'audio',
@@ -919,7 +916,8 @@ sub _renderTrack {
 			info => {
 				command   => ['tidal_info', 'items'],
 				fixedParams => {
-					%$fixedParams,
+					%{$fixedParams || {}},
+					type => 'track',
 					id => $item->{id},
 				},
 			},
@@ -978,7 +976,7 @@ sub _renderArtist {
 		info => {
 			command   => ['tidal_info', 'items'],
 			fixedParams => {
-				type => 'artists',
+				type => 'artist',
 				id => $item->{id},
 			},
 		},

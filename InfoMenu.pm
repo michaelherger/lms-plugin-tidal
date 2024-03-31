@@ -52,7 +52,7 @@ sub menuInfoWeb {
 			my $favorites = shift || [];
 			my $action;
 
-			if ($type =~ /playlist/) {
+			if ($type eq 'playlist') {
 				$action = (grep { $_->{uuid} eq $id } @$favorites) ? 'remove' : 'add';
 			} else {
 				$action = (grep { $_->{id} == $id && ($type =~ /$_->{type}/i || !$_->{type}) } @$favorites) ? 'remove' : 'add';
@@ -89,7 +89,7 @@ sub menuInfoWeb {
 							fixedParams => { action => 'add_to_playlist', id => $id },
 						},
 					},
-				} if $type =~ /track/;
+				} if $type eq 'track';
 			} else {
 				push @$items, {
 					type => 'link',
@@ -108,23 +108,23 @@ sub menuInfoWeb {
 					name => cstring($client, 'PLUGIN_TIDAL_ADD_TO_PLAYLIST'),
 					url => \&addToPlaylist,
 					passthrough => [ { id => $id } ],
-				} if $type =~ /track/;
+				} if $type eq 'track';
 			}
 
 			my $method;
 
-			if ( $type =~ /tracks/ ) {
+			if ( $type eq 'track' ) {
 				$method = \&_menuTrackInfo;
-			} elsif ( $type =~ /albums/ ) {
+			} elsif ( $type eq 'album' ) {
 				$method = \&_menuAlbumInfo;
-			} elsif ( $type =~ /artists/ ) {
+			} elsif ( $type eq 'artist' ) {
 				$method = \&_menuArtistInfo;
-			} elsif ( $type =~ /playlists/ ) {
+			} elsif ( $type eq 'playlist' ) {
 				$method = \&_menuPlaylistInfo;
 =comment
-			} elsif ( $type =~ /podcasts/ ) {
+			} elsif ( $type eq 'podcast' ) {
 				$method = \&_menuPodcastInfo;
-			} elsif ( $type =~ /episodes/ ) {
+			} elsif ( $type eq 'episode' ) {
 				$method = \&_menuEpisodeInfo;
 =cut
 			}
@@ -146,7 +146,7 @@ sub menuInfoWeb {
 				} );
 			}, $args->{params});
 
-		}, $type );
+		}, $type . 's' );
 
 	}, $request );
 }
@@ -250,11 +250,11 @@ sub menuAction {
 
 		main::INFOLOG && $log->is_info && $log->info("JSON RPC action $action for $id");
 
-		if ($action =~ /remove_track/ ) {
+		if ($action eq 'remove_track' ) {
 			my $playlistId = $request->getParam('playlistId');
 			my $index = $request->getParam('index');
 			$api->updatePlaylist( sub { }, 'del', $playlistId, $index );
-		} elsif ($action =~ /add_track/ ) {
+		} elsif ($action eq 'add_track' ) {
 			# this is only used if we have a direct RPC menu set in addToPlaylist
 			my $playlistId = $request->getParam('playlistId');
 			$api->updatePlaylist( sub { }, 'add', $playlistId, $id );
@@ -303,7 +303,7 @@ sub menuBrowse {
 	Slim::Control::XMLBrowser::cliQuery('tidal_browse', sub {
 		my ($client, $cb, $args) = @_;
 
-		if ( $type =~ /album/ ) {
+		if ( $type eq 'album' ) {
 
 			Plugins::TIDAL::Plugin::getAlbum($client, sub {
 				my $feed = $_[0];
@@ -311,7 +311,7 @@ sub menuBrowse {
 				$cb->($feed);
 			}, $args, { id => $id } );
 
-		} elsif ( $type =~ /artist/ ) {
+		} elsif ( $type eq 'artist' ) {
 
 			Plugins::TIDAL::Plugin::getAPIHandler($client)->getArtist(sub {
 				my $feed = Plugins::TIDAL::Plugin::_renderItem( $client, $_[0] ) if $_[0];
@@ -322,7 +322,7 @@ sub menuBrowse {
 				$cb->($feed);
 			}, $id );
 
-		} elsif ( $type =~ /playlist/ ) {
+		} elsif ( $type eq 'playlist' ) {
 
 			Plugins::TIDAL::Plugin::getAPIHandler($client)->playlist(sub {
 				my $feed = Plugins::TIDAL::Plugin::_renderItem( $client, $_[0] ) if $_[0];
@@ -330,14 +330,14 @@ sub menuBrowse {
 				$cb->($feed);
 			}, $id );
 
-		} elsif ( $type =~ /track/ ) {
+		} elsif ( $type eq 'track' ) {
 
 			# track must be in cache, no memorizing
 			my $cache = Slim::Utils::Cache->new;
 			my $track = Plugins::TIDAL::Plugin::_renderItem( $client, $cache->get('tidal_meta_' . $id), { addArtistToTitle => 1 } );
 			$cb->([$track]);
 =comment
-		} elsif ( $type =~ /podcast/ ) {
+		} elsif ( $type eq 'podcast' ) {
 
 			# we need to re-acquire the podcast itself
 			Plugins::TIDAL::Plugin::getAPIHandler($client)->podcast(sub {
@@ -348,7 +348,7 @@ sub menuBrowse {
 				} );
 			}, $id );
 
-		} elsif ( $type =~ /episode/ ) {
+		} elsif ( $type eq 'episode' ) {
 
 			# episode must be in cache, no memorizing
 			my $cache = Slim::Utils::Cache->new;

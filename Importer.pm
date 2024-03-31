@@ -247,36 +247,24 @@ sub needsUpdate { if (!main::SCANNER) {
 	my ($class, $cb) = @_;
 
 	my $lastScanTime = $cache->get('tidal_library_last_scan') || return $cb->(1);
+	my @keys = qw(updatedFavoriteArtists updatedFavoriteTracks updatedFavoriteAlbums);
+	push @keys, qw(updatedFavoritePlaylists updatedPlaylists) unless $class->ignorePlaylists;
 
-	my $checkFav = sub {
-		my ($userId, $type, $previous, $acb) = @_;
+	Async::Util::amap(
+		inputs => [ values %{_enabledAccounts()} ],
+		action => sub {
+			my ($userId, $acb) = @_;
 
-		Plugins::TIDAL::API::Async->new({
-			userId => $userId
-		})->getLatestCollectionTimestamp(sub {
-			my $timestamp = shift;
-			$acb->($timestamp > $lastScanTime);
-		}, $type);
-	};
+			Plugins::TIDAL::API::Async->new({ userId => $userId })->getLatestCollectionTimestamp(sub {
+				my (undef, $timestamp) = @_;
 
-	my $workers = [ map {
-		my $userId = $_;
-		my @tasks = (
-			sub { $checkFav->($userId, 'albums', @_) },
-			sub { $checkFav->($userId, 'artists', @_) },
-		);
-
-		if (!$class->ignorePlaylists) {
-			push @tasks, sub { $checkFav->($userId, 'playlists', @_) };
-		}
-
-		@tasks;
-	} sort {
-		$a <=> $b
-	} values %{_enabledAccounts()} ];
-
-	Async::Util::achain(
-		steps => $workers,
+				my $updated;
+				$updated ||= $timestamp->{$_} > $lastScanTime foreach(@keys);
+				
+				$acb->($updated);
+			} );
+		},
+		at_a_time => 1,
 		cb => sub {
 			my ($result, $error) = @_;
 			$cb->($result && !$error);
