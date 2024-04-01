@@ -255,22 +255,31 @@ sub needsUpdate { if (!main::SCANNER) {
 	Async::Util::achain(
 		steps => [ map {
 			my $userId = $_;
-			sub {
-				my ($input, $acb) = @_;
-				return $acb($input) if $input;
+			my $api = Plugins::TIDAL::API::Async->new({ userId => $userId });
 
-				my $api = Plugins::TIDAL::API::Async->new({ userId => $userId });
+			my @tasks = (
+				sub {
+					my ($input, $acb) = @_;
+					return $acb->($input) if $input;
 
-				$api->getLatestCollectionTimestamp( sub {
-					my (undef, $timestamp) = @_;
+					$api->getLatestCollectionTimestamp(sub {
+						my (undef, $timestamp) = @_;
 
-					foreach (@keys) {
-						return $acb->(1) if $timestamp->{$_} > $lastScanTime;
-					}
+						foreach (@keys) {
+							return $acb->(1) if $timestamp->{$_} > $lastScanTime;
+						}
 
-					return $acb(0) if $class->ignorePlaylists;
+						return $acb->(0);
+					});
+				}
+			);
 
-					$api->getFavoritePlaylists( sub {
+			if (!$class->ignorePlaylists) {
+				push @tasks, sub {
+					my ($input, $acb) = @_;
+					return $acb->($input) if $input;
+
+					$api->getFavoritePlaylists(sub {
 						my $playlists = shift;
 
 						foreach (@$playlists) {
@@ -278,9 +287,13 @@ sub needsUpdate { if (!main::SCANNER) {
 						}
 
 						return $acb->(0);
-					}, 'playlists', 1 );
-				} );
+					}, 1);
+				};
 			}
+
+			@tasks;
+		} sort {
+			$a <=> $b
 		} values %{_enabledAccounts()} ],
 		cb => sub {
 			my ($result, $error) = @_;
