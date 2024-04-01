@@ -21,7 +21,6 @@ use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL DYNAMIC_TTL 
 use constant CAN_MORE_HTTP_VERBS => Slim::Networking::SimpleAsyncHTTP->can('delete');
 
 {
-	# we want updatedFavorites to be a hashref, not a hash
 	__PACKAGE__->mk_accessor( rw => qw(
 		client
 		userId
