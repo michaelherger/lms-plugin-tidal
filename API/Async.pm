@@ -332,7 +332,8 @@ sub getFavoritePlaylists {
 		$cb->($_[0]->{items} || []);
 	}, {
 		_ttl => DYNAMIC_TTL,
-		_refresh => $refresh
+		_refresh => $refresh,
+		limit => MAX_LIMIT,
 	} );
 }
 
