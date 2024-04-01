@@ -4,6 +4,8 @@ use strict;
 
 use base qw(Slim::Plugin::OnlineLibraryBase);
 
+use Date::Parse qw(str2time);
+
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
@@ -247,36 +249,39 @@ sub needsUpdate { if (!main::SCANNER) {
 	my ($class, $cb) = @_;
 
 	my $lastScanTime = $cache->get('tidal_library_last_scan') || return $cb->(1);
-
-	my $checkFav = sub {
-		my ($userId, $type, $previous, $acb) = @_;
-
-		Plugins::TIDAL::API::Async->new({
-			userId => $userId
-		})->getLatestCollectionTimestamp(sub {
-			my $timestamp = shift;
-			$acb->($timestamp > $lastScanTime);
-		}, $type);
-	};
-
-	my $workers = [ map {
-		my $userId = $_;
-		my @tasks = (
-			sub { $checkFav->($userId, 'albums', @_) },
-			sub { $checkFav->($userId, 'artists', @_) },
-		);
-
-		if (!$class->ignorePlaylists) {
-			push @tasks, sub { $checkFav->($userId, 'playlists', @_) };
-		}
-
-		@tasks;
-	} sort {
-		$a <=> $b
-	} values %{_enabledAccounts()} ];
+	my @keys = qw(updatedFavoriteArtists updatedFavoriteTracks updatedFavoriteAlbums);
+	push @keys, qw(updatedFavoritePlaylists updatedPlaylists) unless $class->ignorePlaylists;
 
 	Async::Util::achain(
-		steps => $workers,
+		steps => [ map {
+			my $userId = $_;
+			sub {
+				my ($input, $acb) = @_;
+				return $acb($input) if $input;
+
+				my $api = Plugins::TIDAL::API::Async->new({ userId => $userId });
+
+				$api->getLatestCollectionTimestamp( sub {
+					my (undef, $timestamp) = @_;
+
+					foreach (@keys) {
+						return $acb->(1) if $timestamp->{$_} > $lastScanTime;
+					}
+
+					return $acb(0) if $class->ignorePlaylists;
+
+					$api->getFavoritePlaylists( sub {
+						my $playlists = shift;
+
+						foreach (@$playlists) {
+							return $acb->(1) if str2time($_->{item}->{lastUpdated}) > $lastScanTime;
+						}
+
+						return $acb->(0);
+					}, 'playlists', 1 );
+				} );
+			}
+		} values %{_enabledAccounts()} ],
 		cb => sub {
 			my ($result, $error) = @_;
 			$cb->($result && !$error);
@@ -287,7 +292,6 @@ sub needsUpdate { if (!main::SCANNER) {
 sub _enabledAccounts {
 	my $accounts = $prefs->get('accounts');
 	my $dontImportAccounts = $prefs->get('dontImportAccounts');
-
 	my $enabledAccounts = {};
 
 	while (my ($id, $account) = each %$accounts) {

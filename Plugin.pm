@@ -136,7 +136,11 @@ sub handleFeed {
 		name => cstring($client, 'PLAYLISTS'),
 		image => 'html/images/playlists.png',
 		type => 'link',
-		url => \&getFavoritePlaylists,
+		# I don't think that notion still exists. it seems to me that the
+		# users/playlist is not maintained anymore
+		# url => \&getFavoritePlaylists,
+		url => \&getFavorites,
+		passthrough => [{ type => 'playlists' }],
 	},{
 		name => cstring($client, 'ALBUMS'),
 		image => 'html/images/albums.png',
@@ -392,7 +396,7 @@ sub addPlayingToFavorites {
 
 	Plugins::TIDAL::Plugin::getAPIHandler($client)->updateFavorite( sub {
 		_completed($client, $cb);
-	}, 'add', 'tracks', $id );
+	}, 'add', 'track', $id );
 }
 
 sub addPlayingToPlaylist {
@@ -472,6 +476,9 @@ sub searchMenu {
 	};
 }
 
+# I think that the /users/<id>/favorites/playlists returns everything because
+# all home-made playlist are in our favorites at least in the v1 interface.
+=comment
 sub getFavoritePlaylists {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -514,6 +521,7 @@ sub getFavoritePlaylists {
 		}
 	);
 }
+=cut
 
 sub getFavorites {
 	my ( $client, $cb, $args, $params ) = @_;
@@ -526,7 +534,7 @@ sub getFavorites {
 		$cb->( {
 			items => $items
 		} );
-	}, $params->{type}, $args->{quantity} == 1 );
+	}, $params->{type}, $args->{quantity} != 1 );
 }
 
 sub getArtist {
@@ -820,7 +828,7 @@ sub _renderPlaylist {
 			info => {
 				command   => ['tidal_info', 'items'],
 				fixedParams => {
-					type => 'playlists',
+					type => 'playlist',
 					id => $item->{uuid},
 				},
 			},
@@ -859,7 +867,7 @@ sub _renderAlbum {
 			info => {
 				command   => ['tidal_info', 'items'],
 				fixedParams => {
-					type => 'albums',
+					type => 'album',
 					id => $item->{id},
 				},
 			},
@@ -893,8 +901,6 @@ sub _renderTrack {
 		index => $index,
 	} if $playlistId;
 
-	$fixedParams->{type} = 'tracks';
-
 	return {
 		name => $title,
 		type => 'audio',
@@ -910,7 +916,8 @@ sub _renderTrack {
 			info => {
 				command   => ['tidal_info', 'items'],
 				fixedParams => {
-					%$fixedParams,
+					%{$fixedParams || {}},
+					type => 'track',
 					id => $item->{id},
 				},
 			},
@@ -969,7 +976,7 @@ sub _renderArtist {
 		info => {
 			command   => ['tidal_info', 'items'],
 			fixedParams => {
-				type => 'artists',
+				type => 'artist',
 				id => $item->{id},
 			},
 		},

@@ -7,7 +7,7 @@ use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 
-our @EXPORT_OK = qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL USER_CONTENT_TTL);
+our @EXPORT_OK = qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL DYNAMIC_TTL USER_CONTENT_TTL);
 
 use constant AURL => 'https://auth.tidal.com';
 use constant BURL => 'https://api.tidal.com/v1';
@@ -20,6 +20,7 @@ use constant DEFAULT_LIMIT => 100;
 use constant MAX_LIMIT => 5000;
 
 use constant DEFAULT_TTL => 86400;
+use constant DYNAMIC_TTL => 3600;
 use constant USER_CONTENT_TTL => 300;
 
 use constant IMAGE_SIZES => {
