@@ -292,8 +292,6 @@ sub needsUpdate { if (!main::SCANNER) {
 			}
 
 			@tasks;
-		} sort {
-			$a <=> $b
 		} values %{_enabledAccounts()} ],
 		cb => sub {
 			my ($result, $error) = @_;
