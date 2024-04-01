@@ -307,7 +307,7 @@ sub trackInfoMenu {
 		favorites_url => 'tidal://album:' . $albumId,
 		type => 'playlist',
 		url => \&getAlbum,
-		image => 'html/images/albums.png',
+		image => Plugins::TIDAL::API->getImageUrl($remoteMeta, 'usePlaceholder'),
 		passthrough => [{ id => $albumId }],
 	} if $albumId;
 
@@ -363,11 +363,13 @@ sub trackInfoMenu {
 			name => cstring($client, 'PLUGIN_TIDAL_ADD_TO_FAVORITES'),
 			url => \&addPlayingToFavorites,
 			passthrough => [ { url => $url } ],
+			image => 'html/images/favorites.png'
 		}, {
 			type => 'link',
 			name => cstring($client, 'PLUGIN_TIDAL_ADD_TO_PLAYLIST'),
 			url => \&addPlayingToPlaylist,
 			passthrough => [ { url => $url } ],
+			image => 'html/images/playlists.png'
 		} );
 	}
 
