@@ -16,15 +16,19 @@ use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(string);
 
-use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL USER_CONTENT_TTL);
+use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL DYNAMIC_TTL USER_CONTENT_TTL);
 
 use constant CAN_MORE_HTTP_VERBS => Slim::Networking::SimpleAsyncHTTP->can('delete');
 
 {
+	# we want updatedFavorites to be a hashref, not a hash
 	__PACKAGE__->mk_accessor( rw => qw(
 		client
 		userId
-		updated
+	) );
+
+	__PACKAGE__->mk_accessor( hash => qw(
+		updatedFavorites
 	) );
 }
 
@@ -69,6 +73,7 @@ sub search {
 
 		$cb->($items);
 	}, {
+		_ttl => $args->{ttl} || DYNAMIC_TTL,
 		limit => $args->{limit},
 		query => $args->{search}
 	});
@@ -289,7 +294,7 @@ sub playlistData {
 	$self->_get("/playlists/$uuid", sub {
 		my $playlist = shift;
 		$cb->($playlist);
-	});
+	}, { _ttl => DYNAMIC_TTL } );
 }
 
 sub playlist {
@@ -312,9 +317,23 @@ sub playlist {
 
 		$cb->($items || []);
 	},{
+		_ttl => DYNAMIC_TTL,
 		_refresh => $refresh,
 		limit => MAX_LIMIT,
 	});
+}
+
+sub getFavoritePlaylists {
+	my ($self, $cb, $refresh) = @_;
+
+	my $userId = $self->userId || return $cb->([]);
+
+	$self->_get("/users/$userId/favorites/playlists", sub {
+		$cb->($_[0]->{items} || []);
+	}, {
+		_ttl => DYNAMIC_TTL,
+		_refresh => $refresh
+	} );
 }
 
 # User collections can be large - but have a known last updated timestamp.
@@ -331,10 +350,8 @@ sub getFavorites {
 
 	# verify if that type has been updated and force refresh (don't confuse adding
 	# a playlist to favorites with changing the *content* of a playlist)
-	if ((my $updated = $self->updated) =~ /$type:/) {
-		$self->updated($updated =~ s/$type://r);
-		$refresh = 1;
-	}
+	$refresh ||= $self->updatedFavorites($type);
+	$self->updatedFavorites($type, 0);
 
 	my $lookupSub = sub {
 		my $timestamp = shift;
@@ -345,11 +362,12 @@ sub getFavorites {
 			my $items = [ map { $_->{item} } @{$result->{items} || []} ] if $result;
 			$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $items && $type eq 'tracks';
 
-			# verify if home-made playlists need to be invalidated
+			# verify if playlists need to be invalidated
 			if (defined $timestamp && $type eq 'playlists') {
 				foreach my $playlist (@$items) {
-					next unless $playlist->{type} eq 'USER' && str2time($playlist->{lastUpdated}) > $timestamp;
+					next unless str2time($playlist->{lastUpdated}) > $timestamp;
 					main::INFOLOG && $log->is_info && $log->info("Invalidating playlist $playlist->{uuid}");
+					# the invalidation flag lives longer than the playlist cache itself
 					$cache->set('tidal_playlist_refresh_' . $playlist->{uuid}, DEFAULT_TTL);
 				}
 			}
@@ -398,7 +416,7 @@ sub getLatestCollectionTimestamp {
 	$self->_get("/users/$userId/favorites", sub {
 		my $result = shift;
 		my $key = 'updatedFavorite' . ucfirst($type || '');
-		$result->{$_} = (str2time($result->{$_}) || 0) foreach (keys %$result);		
+		$result->{$_} = (str2time($result->{$_}) || 0) foreach (keys %$result);
 		$cb->( $result->{$key}, $result );
 	}, { _nocache => 1 });
 }
@@ -410,8 +428,8 @@ sub updateFavorite {
 	my $key = $type ne 'playlist' ? $type . 'Ids' : 'uuids';
 	$type .= 's';
 
-	my $updated = $self->updated;
-	$self->updated($updated . "$type:") unless $updated =~ /$type/;
+	# make favorites has updated
+	$self->updatedFavorites($type, 1);
 
 	if ($action eq 'add') {
 
@@ -480,11 +498,11 @@ sub updatePlaylist {
 					\%headers,
 				);
 			}
-		}, { 
+		}, {
 		_nocache => 1,
 		limit => 1,
 		}
-	); 
+	);
 }
 
 sub getTrackUrl {

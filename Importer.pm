@@ -4,6 +4,8 @@ use strict;
 
 use base qw(Slim::Plugin::OnlineLibraryBase);
 
+use Date::Parse qw(str2time);
+
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
@@ -250,21 +252,36 @@ sub needsUpdate { if (!main::SCANNER) {
 	my @keys = qw(updatedFavoriteArtists updatedFavoriteTracks updatedFavoriteAlbums);
 	push @keys, qw(updatedFavoritePlaylists updatedPlaylists) unless $class->ignorePlaylists;
 
-	Async::Util::amap(
-		inputs => [ values %{_enabledAccounts()} ],
-		action => sub {
-			my ($userId, $acb) = @_;
+	Async::Util::achain(
+		steps => [ map {
+			my $userId = $_;
+			sub {
+				my ($input, $acb) = @_;
+				return $acb($input) if $input;
 
-			Plugins::TIDAL::API::Async->new({ userId => $userId })->getLatestCollectionTimestamp(sub {
-				my (undef, $timestamp) = @_;
+				my $api = Plugins::TIDAL::API::Async->new({ userId => $userId });
 
-				my $updated;
-				$updated ||= $timestamp->{$_} > $lastScanTime foreach(@keys);
-				
-				$acb->($updated);
-			} );
-		},
-		at_a_time => 1,
+				$api->getLatestCollectionTimestamp( sub {
+					my (undef, $timestamp) = @_;
+
+					foreach (@keys) {
+						return $acb->(1) if $timestamp->{$_} > $lastScanTime;
+					}
+
+					return $acb(0) if $class->ignorePlaylists;
+
+					$api->getFavoritePlaylists( sub {
+						my $playlists = shift;
+
+						foreach (@$playlists) {
+							return $acb->(1) if str2time($_->{item}->{lastUpdated}) > $lastScanTime;
+						}
+
+						return $acb->(0);
+					}, 'playlists', 1 );
+				} );
+			}
+		} values %{_enabledAccounts()} ],
 		cb => sub {
 			my ($result, $error) = @_;
 			$cb->($result && !$error);
@@ -275,7 +292,6 @@ sub needsUpdate { if (!main::SCANNER) {
 sub _enabledAccounts {
 	my $accounts = $prefs->get('accounts');
 	my $dontImportAccounts = $prefs->get('dontImportAccounts');
-
 	my $enabledAccounts = {};
 
 	while (my ($id, $account) = each %$accounts) {
