@@ -325,7 +325,7 @@ sub menuBrowse {
 		} elsif ( $type eq 'playlist' ) {
 
 			Plugins::TIDAL::Plugin::getAPIHandler($client)->playlist(sub {
-				my $feed = Plugins::TIDAL::Plugin::_renderItem( $client, $_[0] ) if $_[0];
+				my $feed = [ map { Plugins::TIDAL::Plugin::_renderItem( $client, $_) } @{$_[0]} ] if $_[0];
 				# we don't need to memorize the feed as we won't redescend into it
 				$cb->($feed);
 			}, $id );
