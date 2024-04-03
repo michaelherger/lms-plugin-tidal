@@ -821,7 +821,8 @@ sub _renderPlaylist {
 		line1 => $item->{title},
 		line2 => join(', ', map { $_->{name} } @{$item->{promotedArtists} || []}),
 		favorites_url => 'tidal://playlist:' . $item->{uuid},
-		play => 'tidal://playlist:' . $item->{uuid},
+		# see note on album
+		# play => 'tidal://playlist:' . $item->{uuid},
 		type => 'playlist',
 		url => \&getPlaylist,
 		image => Plugins::TIDAL::API->getImageUrl($item),
@@ -834,6 +835,9 @@ sub _renderPlaylist {
 					id => $item->{uuid},
 				},
 			},
+			play => _makeAction('play', 'playlist', $item->{uuid}),
+			add => _makeAction('add', 'playlist', $item->{uuid}),
+			insert => _makeAction('insert', 'playlist', $item->{uuid}),
 		},
 	};
 }
@@ -863,8 +867,8 @@ sub _renderAlbum {
 		url => \&getAlbum,
 		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder'),
 		passthrough => [{ id => $item->{id} }],
-		# we need a 'play' for M(ore) to appear
-		play => 'tidal://album:' . $item->{id},
+		# we need a 'play' for M(ore) to appear or set play, add and insert actions
+		# play => 'tidal://album:' . $item->{id},
 		itemActions => {
 			info => {
 				command   => ['tidal_info', 'items'],
@@ -873,6 +877,9 @@ sub _renderAlbum {
 					id => $item->{id},
 				},
 			},
+			play => _makeAction('play', 'album', $item->{id}),
+			add => _makeAction('add', 'album', $item->{id}),
+			insert => _makeAction('insert', 'album', $item->{id}),
 		},
 	};
 }
@@ -1055,6 +1062,17 @@ sub _renderCategory {
 		items => $items,
 		image => Plugins::TIDAL::API->getImageUrl($item, 'usePlaceholder', 'genre'),
 		passthrough => [ { path => $item->{path} } ],
+	};
+}
+
+sub _makeAction {
+	my ($action, $type, $id) = @_;
+	return {
+		command => ['tidal_browse', 'playlist', $action],
+		fixedParams => {
+			type => $type, 
+			id => $id,
+		},
 	};
 }
 
