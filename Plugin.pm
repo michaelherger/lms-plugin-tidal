@@ -136,11 +136,7 @@ sub handleFeed {
 		name => cstring($client, 'PLAYLISTS'),
 		image => 'html/images/playlists.png',
 		type => 'link',
-		# I don't think that notion still exists. it seems to me that the
-		# users/playlist is not maintained anymore
-		# url => \&getFavoritePlaylists,
-		url => \&getFavorites,
-		passthrough => [{ type => 'playlists' }],
+		url => \&getCollectionPlaylists,
 	},{
 		name => cstring($client, 'ALBUMS'),
 		image => 'html/images/albums.png',
@@ -478,52 +474,19 @@ sub searchMenu {
 	};
 }
 
-# I think that the /users/<id>/favorites/playlists returns everything because
-# all home-made playlist are in our favorites at least in the v1 interface.
-=comment
-sub getFavoritePlaylists {
+sub getCollectionPlaylists {
 	my ( $client, $cb, $args, $params ) = @_;
-
-	Async::Util::amap(
-		inputs => [
-			sub {
-				getFavorites($client, shift, {}, { type => 'playlists' });
-			},
-			sub {
-				my $acb = shift;
-				getAPIHandler($client)->userPlaylists(sub {
-					my $items = shift;
-
-					$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ] if $items;
-					$acb->( {
-						items => $items
-					} );
-				});
-			}
-		],
-		action => sub {
-			my ($input, $acb) = @_;
-			$input->($acb);
-		},
-		cb => sub {
-			my ($results, $error) = @_;
-
-			my %seen;
-			my $items = [ sort {
-				$a->{name} cmp $b->{name}
-			} grep {
-				!$seen{$_->{passthrough}->[0]->{uuid}}++
-			} map {
-				@{$_->{items}}
-			} @$results ];
-
-			$cb->({
-				items => $items
-			});
-		}
-	);
-}
-=cut
+	
+	getAPIHandler($client)->getCollectionPlaylists(sub {
+		my $items = shift;
+		
+		$items = [ map { _renderPlaylist($_) } @$items ] if $items;
+		
+		$cb->( {
+			items => $items
+		} );
+	}, $args->{quantity} != 1 );
+}	
 
 sub getFavorites {
 	my ( $client, $cb, $args, $params ) = @_;

@@ -48,16 +48,17 @@ sub albumTracks {
 	return $tracks;
 }
 
-sub userPlaylists {
+sub collectionPlaylists {
 	my ($class, $userId) = @_;
 
-	my $result = $class->_get("/users/$userId/playlists", $userId);
+	my $result = $class->_get("/users/$userId/playlistsAndFavoritePlaylists", $userId, { _page => 50 });
+	$result = [ map { $_->{playlist} } @{$result->{items} || []} ] if $result;
 
 	my $items = [ map {
 		$_->{added} = str2time(delete $_->{created}) if $_->{created};
 		$_->{cover} = Plugins::TIDAL::API->getImageUrl($_);
 		$_;
-	} @{$result->{items} || []}] if $result;
+	} @$result ] if $result && @$result;
 
 	return $items;
 }
@@ -85,6 +86,7 @@ sub _get {
 
 	$userId ||= Plugins::TIDAL::API->getSomeUserId();
 	my $token = $cache->get("tidal_at_$userId");
+	my $pageSize = delete $params->{_page} || DEFAULT_LIMIT;
 
 	if (!$token) {
 		$log->error("Failed to get token for $userId");
@@ -93,7 +95,7 @@ sub _get {
 
 	$params ||= {};
 	$params->{countryCode} ||= Plugins::TIDAL::API->getCountryCode($userId);
-	$params->{limit} ||= DEFAULT_LIMIT;
+	$params->{limit} = min($pageSize, $params->{limit} || DEFAULT_LIMIT);
 
 	my $query = complex_to_query($params);
 
@@ -113,7 +115,7 @@ sub _get {
 
 		if (ref $result eq 'HASH' && $result->{items} && $result->{totalNumberOfItems}) {
 			my $maxItems = min(MAX_LIMIT, $result->{totalNumberOfItems});
-			my $offset = ($params->{offset} || 0) + DEFAULT_LIMIT;
+			my $offset = ($params->{offset} || 0) + $pageSize;
 
 			if ($maxItems > $offset) {
 				my $remaining = $result->{totalNumberOfItems} - $offset;

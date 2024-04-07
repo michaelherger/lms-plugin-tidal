@@ -48,7 +48,7 @@ sub menuInfoWeb {
 
 		my $api = Plugins::TIDAL::Plugin::getAPIHandler($client);
 
-		$api->getFavorites( sub {
+		my $subInfo = sub {
 			my $favorites = shift || [];
 			my $action;
 
@@ -146,7 +146,13 @@ sub menuInfoWeb {
 				} );
 			}, $args->{params});
 
-		}, $type . 's' );
+		};
+
+		if ($type eq 'playlist') {
+			$api->getCollectionPlaylists( $subInfo );
+		} else {
+			$api->getFavorites( $subInfo, $type . 's' );
+		}
 
 	}, $request );
 }
@@ -156,8 +162,7 @@ sub addToPlaylist {
 
 	my $api = Plugins::TIDAL::Plugin::getAPIHandler($client);
 
-	# we use that API and not userPlaylist() because it checks for updates	
-	$api->getFavorites( sub {
+	$api->getCollectionPlaylists( sub {
 		my $items = [];
 
 		foreach my $item ( @{$_[0] || {}} ) {
@@ -203,7 +208,7 @@ sub addToPlaylist {
 		}
 
 		$cb->( { items => $items } );
-	}, 'playlists' );
+	} );
 }
 
 sub menuAction {

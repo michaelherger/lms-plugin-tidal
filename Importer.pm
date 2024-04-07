@@ -167,9 +167,7 @@ sub scanPlaylists { if (main::SCANNER) {
 		$progress->update(string('PLUGIN_TIDAL_PROGRESS_READ_PLAYLISTS', $accountName), $progress->done);
 
 		main::INFOLOG && $log->is_info && $log->info("Reading playlists for $accountName...");
-		my $playlists = Plugins::TIDAL::API::Sync->getFavorites($userId, 'playlists') || [];
-		my $userPlaylists = Plugins::TIDAL::API::Sync->userPlaylists($userId);
-		push @$playlists, @$userPlaylists if $userPlaylists;
+		my $playlists = Plugins::TIDAL::API::Sync->collectionPlaylists($userId) || [];
 
 		$progress->total($progress->total + @$playlists);
 
@@ -279,7 +277,7 @@ sub needsUpdate { if (!main::SCANNER) {
 					my ($input, $acb) = @_;
 					return $acb->($input) if $input;
 
-					$api->getFavoritePlaylists(sub {
+					$api->getCollectionPlaylists(sub {
 						my $playlists = shift;
 
 						foreach (@$playlists) {

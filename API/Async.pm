@@ -24,6 +24,7 @@ use constant CAN_MORE_HTTP_VERBS => Slim::Networking::SimpleAsyncHTTP->can('dele
 	__PACKAGE__->mk_accessor( rw => qw(
 		client
 		userId
+		updatedPlaylists
 	) );
 
 	__PACKAGE__->mk_accessor( hash => qw(
@@ -322,24 +323,20 @@ sub playlist {
 	});
 }
 
-sub getFavoritePlaylists {
-	my ($self, $cb, $refresh) = @_;
-
-	my $userId = $self->userId || return $cb->([]);
-
-	$self->_get("/users/$userId/favorites/playlists", sub {
-		$cb->($_[0]->{items} || []);
-	}, {
-		_ttl => DYNAMIC_TTL,
-		_refresh => $refresh,
-		limit => MAX_LIMIT,
-	} );
-}
-
 # User collections can be large - but have a known last updated timestamp.
-# Instead of statically caching data, then re-fetch everything, do a quick
-# lookup to get the latest timestamp first, then return from cache directly
-# if the list hasn't changed, or look up afresh if needed.
+# Playlist are more complicated as the list might have changed but also the
+# content might have changed. We know if the list of favorite playlists has
+# changed and if the content (tbc) of user-created playlists has changed.
+# So if the list has changed, we re-read it and iterate playlists to see 
+# and flag the updated ones so that cache is refreshed next time we access
+# these (note that we don't re-read the items, just the playlist).
+# But that does not do much good when the list have not changed, we can 
+# only wait for the playlist's cache ttl to expire (1 day)
+# For users-created playlists, the situtation is better because we know that 
+# the content of at least one has changed, so we re-read and invalidate them 
+# as describes above, but because we have a flag for content update, changes 
+# are detected immediately, regardless of cache.
+
 sub getFavorites {
 	my ($self, $cb, $type, $refresh) = @_;
 
@@ -387,21 +384,82 @@ sub getFavorites {
 	# use cached data unless the collection has changed
 	my $cached = $cache->get($cacheKey);
 	if ($cached && ref $cached->{items}) {
-		# don't bother verifying timestamp unless we're sure
+		# don't bother verifying timestamp unless we're sure we need to
 		return $cb->($cached->{items}) unless $refresh;
 
 		$self->getLatestCollectionTimestamp(sub {
 			my ($timestamp, $fullset) = @_;
 
+			# we re-check more than what we should if updatePlaylist has changed, as we could 
+			# limit to user-made playlist. But that does not cost much to check them all
 			if ($timestamp > $cached->{timestamp} || ($type eq 'playlists' && $fullset->{updatedPlaylists} > $cached->{timestamp})) {
-				main::INFOLOG && $log->is_info && $log->info("Collection of type '$type' has changed - updating");
+				main::INFOLOG && $log->is_info && $log->info("Favorites of type '$type' has changed - updating");
 				$lookupSub->($cached->{timestamp});
 			}
 			else {
-				main::INFOLOG && $log->is_info && $log->info("Collection of type '$type' has not changed - using cached results");
+				main::INFOLOG && $log->is_info && $log->info("Favorites of type '$type' has not changed - using cached results");
 				$cb->($cached->{items});
 			}
 		}, $type);
+	}
+	else {
+		$lookupSub->();
+	}
+}
+
+sub getCollectionPlaylists {
+	my ($self, $cb, $refresh) = @_;
+
+	my $userId = $self->userId || return $cb->();
+	my $cacheKey = "tidal_playlists:$userId";
+
+	$refresh ||= $self->updatedPlaylists();
+	$self->updatedPlaylists(0);
+
+	my $lookupSub = sub {
+		my $timestamp = shift;
+
+		$self->_get("/users/$userId/playlistsAndFavoritePlaylists", sub {
+			my $result = shift;
+
+			my $items = [ map { $_->{playlist} } @{$result->{items} || []} ] if $result;
+
+			foreach my $playlist (@$items) {
+				next unless str2time($playlist->{lastUpdated}) > $timestamp;
+				main::INFOLOG && $log->is_info && $log->info("Invalidating playlist $playlist->{uuid}");
+				$cache->set('tidal_playlist_refresh_' . $playlist->{uuid}, DEFAULT_TTL);
+			}
+
+			$cache->set($cacheKey, {
+				items => $items,
+				timestamp => time(),
+			}, '1M') if $items;
+
+			$cb->($items);
+		},{
+			_nocache => 1,
+			# yes, this is the ONLY API THAT HAS A DIFFERENT PAGE LIMIT
+			_page => 50, 
+			limit => MAX_LIMIT,
+		});
+	};
+
+	my $cached = $cache->get($cacheKey);
+	if ($cached && ref $cached->{items}) {
+		return $cb->($cached->{items}) unless $refresh;
+
+		$self->getLatestCollectionTimestamp(sub {
+			my ($timestamp, $fullset) = @_;
+
+			if ($timestamp > $cached->{timestamp} || $fullset->{updatedPlaylists} > $cached->{timestamp}) {
+				main::INFOLOG && $log->is_info && $log->info("Collection of playlists has changed - updating");
+				$lookupSub->($cached->{timestamp});
+			}
+			else {
+				main::INFOLOG && $log->is_info && $log->info("Collection of playlists has not changed - using cached results");
+				$cb->($cached->{items});
+			}
+		}, 'playlists');
 	}
 	else {
 		$lookupSub->();
@@ -430,6 +488,7 @@ sub updateFavorite {
 
 	# make favorites has updated
 	$self->updatedFavorites($type, 1);
+	$self->updatedPlaylists(1) if $type eq 'playlist';
 
 	if ($action eq 'add') {
 
@@ -576,6 +635,7 @@ sub _call {
 			my $refresh = delete $params->{_refresh};
 			my $personalCache = delete $params->{_personal} ? ($self->userId . ':') : '';
 			my $method = delete $params->{_method} || 'get';
+			my $pageSize = delete $params->{_page} || DEFAULT_LIMIT;
 
 			$params->{limit} ||= DEFAULT_LIMIT;
 
@@ -592,9 +652,9 @@ sub _call {
 			main::INFOLOG && $log->is_info && $log->info("Using cache key '$cacheKey'") unless $noCache;
 
 			my $maxLimit = 0;
-			if ($params->{limit} > DEFAULT_LIMIT) {
+			if ($params->{limit} > $pageSize) {
 				$maxLimit = $params->{limit};
-				$params->{limit} = DEFAULT_LIMIT;
+				$params->{limit} = $pageSize;
 			}
 
 			# TODO - make sure we don't pass any of the keys prefixed with an underscore!
@@ -618,16 +678,16 @@ sub _call {
 					$@ && $log->error($@);
 					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
 
-					if ($maxLimit && $result && ref $result eq 'HASH' && $maxLimit > $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - DEFAULT_LIMIT > 0) {
-						my $remaining = $result->{totalNumberOfItems} - DEFAULT_LIMIT;
+					if ($maxLimit && $result && ref $result eq 'HASH' && $maxLimit > $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - $pageSize > 0) {
+						my $remaining = $result->{totalNumberOfItems} - $pageSize;
 						main::INFOLOG && $log->is_info && $log->info("We need to page to get $remaining more results");
 
 						my @offsets;
-						my $offset = DEFAULT_LIMIT;
+						my $offset = $pageSize;
 						my $maxOffset = min($maxLimit, MAX_LIMIT, $result->{totalNumberOfItems});
 						do {
 							push @offsets, $offset;
-							$offset += DEFAULT_LIMIT;
+							$offset += $pageSize;
 						} while ($offset < $maxOffset);
 
 						if (scalar @offsets) {
