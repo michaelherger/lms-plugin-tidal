@@ -7,7 +7,7 @@ use Slim::Utils::Cache;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 
-our @EXPORT_OK = qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL DYNAMIC_TTL USER_CONTENT_TTL);
+our @EXPORT_OK = qw(AURL BURL KURL SCOPES GRANT_TYPE_DEVICE DEFAULT_LIMIT MAX_LIMIT PLAYLIST_LIMIT DEFAULT_TTL DYNAMIC_TTL USER_CONTENT_TTL);
 
 use constant AURL => 'https://auth.tidal.com';
 use constant BURL => 'https://api.tidal.com/v1';
@@ -17,6 +17,7 @@ use constant SCOPES => 'r_usr+w_usr';
 use constant GRANT_TYPE_DEVICE => 'urn:ietf:params:oauth:grant-type:device_code';
 
 use constant DEFAULT_LIMIT => 100;
+use constant PLAYLIST_LIMIT => 50;
 use constant MAX_LIMIT => 5000;
 
 use constant DEFAULT_TTL => 86400;

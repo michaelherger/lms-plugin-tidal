@@ -10,7 +10,7 @@ use Slim::Networking::SimpleSyncHTTP;
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
 
-use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT MAX_LIMIT);
+use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT MAX_LIMIT PLAYLIST_LIMIT);
 
 my $cache = Slim::Utils::Cache->new();
 my $log = logger('plugin.tidal');
@@ -51,7 +51,7 @@ sub albumTracks {
 sub collectionPlaylists {
 	my ($class, $userId) = @_;
 
-	my $result = $class->_get("/users/$userId/playlistsAndFavoritePlaylists", $userId, { _page => 50 });
+	my $result = $class->_get("/users/$userId/playlistsAndFavoritePlaylists", $userId, { _page => PLAYLIST_LIMIT });
 	$result = [ map { $_->{playlist} } @{$result->{items} || []} ] if $result;
 
 	my $items = [ map {

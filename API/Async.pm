@@ -16,7 +16,7 @@ use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(string);
 
-use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT MAX_LIMIT DEFAULT_TTL DYNAMIC_TTL USER_CONTENT_TTL);
+use Plugins::TIDAL::API qw(BURL DEFAULT_LIMIT PLAYLIST_LIMIT MAX_LIMIT DEFAULT_TTL DYNAMIC_TTL USER_CONTENT_TTL);
 
 use constant CAN_MORE_HTTP_VERBS => Slim::Networking::SimpleAsyncHTTP->can('delete');
 
@@ -327,14 +327,14 @@ sub playlist {
 # Playlist are more complicated as the list might have changed but also the
 # content might have changed. We know if the list of favorite playlists has
 # changed and if the content (tbc) of user-created playlists has changed.
-# So if the list has changed, we re-read it and iterate playlists to see 
+# So if the list has changed, we re-read it and iterate playlists to see
 # and flag the updated ones so that cache is refreshed next time we access
 # these (note that we don't re-read the items, just the playlist).
-# But that does not do much good when the list have not changed, we can 
+# But that does not do much good when the list have not changed, we can
 # only wait for the playlist's cache ttl to expire (1 day)
-# For users-created playlists, the situtation is better because we know that 
-# the content of at least one has changed, so we re-read and invalidate them 
-# as describes above, but because we have a flag for content update, changes 
+# For users-created playlists, the situtation is better because we know that
+# the content of at least one has changed, so we re-read and invalidate them
+# as describes above, but because we have a flag for content update, changes
 # are detected immediately, regardless of cache.
 
 sub getFavorites {
@@ -390,7 +390,7 @@ sub getFavorites {
 		$self->getLatestCollectionTimestamp(sub {
 			my ($timestamp, $fullset) = @_;
 
-			# we re-check more than what we should if updatePlaylist has changed, as we could 
+			# we re-check more than what we should if updatePlaylist has changed, as we could
 			# limit to user-made playlist. But that does not cost much to check them all
 			if ($timestamp > $cached->{timestamp} || ($type eq 'playlists' && $fullset->{updatedPlaylists} > $cached->{timestamp})) {
 				main::INFOLOG && $log->is_info && $log->info("Favorites of type '$type' has changed - updating");
@@ -439,7 +439,7 @@ sub getCollectionPlaylists {
 		},{
 			_nocache => 1,
 			# yes, this is the ONLY API THAT HAS A DIFFERENT PAGE LIMIT
-			_page => 50, 
+			_page => PLAYLIST_LIMIT,
 			limit => MAX_LIMIT,
 		});
 	};
@@ -695,7 +695,10 @@ sub _call {
 								inputs => \@offsets,
 								action => sub {
 									my ($input, $acb) = @_;
-									$self->_get($url, $acb, {
+									$self->_get($url, sub {
+										# only return the first argument, the second would be considered an error
+										$acb->($_[0]);
+									}, {
 										%$params,
 										offset => $input,
 									});
