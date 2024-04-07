@@ -701,6 +701,7 @@ sub _call {
 									}, {
 										%$params,
 										offset => $input,
+										_nocache => 1,
 									});
 								},
 								at_a_time => 4,
