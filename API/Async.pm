@@ -690,18 +690,23 @@ sub _call {
 							$offset += $pageSize;
 						} while ($offset < $maxOffset);
 
+						# restore some of the initial params
+						$params->{_nocache}  = $noCache;
+						$params->{_personal} = $personalCache;
+						$params->{_refresh}  = $refresh;
+						$params->{_method}   = $method;
+
 						if (scalar @offsets) {
 							Async::Util::amap(
 								inputs => \@offsets,
 								action => sub {
 									my ($input, $acb) = @_;
-									$self->_get($url, sub {
+									$self->_call($url, sub {
 										# only return the first argument, the second would be considered an error
 										$acb->($_[0]);
 									}, {
 										%$params,
 										offset => $input,
-										_nocache => 1,
 									});
 								},
 								at_a_time => 4,
