@@ -55,7 +55,7 @@ sub beforeRender {
 		$a->{name} cmp $b->{name}
 	} map {
 		{
-			name => $_->{nickname} || $_->{username},
+			name => Plugins::TIDAL::API->getHumanReadableName($_),
 			id => $_->{userId},
 		}
 	} values %$accounts] if scalar keys %$accounts;

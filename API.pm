@@ -178,4 +178,9 @@ sub cacheTrackMetadata {
 	} @$tracks ];
 }
 
+sub getHumanReadableName {
+	my ($class, $profile) = @_;
+	return $profile->{nickname} || $profile->{firstName} || $profile->{fullName} || $profile->{username};
+}
+
 1;

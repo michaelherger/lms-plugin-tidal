@@ -238,7 +238,7 @@ sub selectAccount {
 
 	my $userId = getAPIHandler($client)->userId;
 	my $items = [ map {
-		my $name = $_->{nickname} || $_->{username};
+		my $name = Plugins::TIDAL::API->getHumanReadableName($_);
 		$name = '* ' . $name if $_->{userId} == $userId;
 
 		{
@@ -476,17 +476,17 @@ sub searchMenu {
 
 sub getCollectionPlaylists {
 	my ( $client, $cb, $args, $params ) = @_;
-	
+
 	getAPIHandler($client)->getCollectionPlaylists(sub {
 		my $items = shift;
-		
+
 		$items = [ map { _renderPlaylist($_) } @$items ] if $items;
-		
+
 		$cb->( {
 			items => $items
 		} );
 	}, $args->{quantity} != 1 );
-}	
+}
 
 sub getFavorites {
 	my ( $client, $cb, $args, $params ) = @_;
@@ -1033,7 +1033,7 @@ sub _makeAction {
 	return {
 		command => ['tidal_browse', 'playlist', $action],
 		fixedParams => {
-			type => $type, 
+			type => $type,
 			id => $id,
 		},
 	};
