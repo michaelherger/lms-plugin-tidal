@@ -168,6 +168,22 @@ sub featured {
 	$self->_get("/featured", $cb);
 }
 
+sub page {
+	my ($self, $cb, $path, $limit) = @_;
+	$self->_get("/$path", sub {
+		my $home = shift;
+
+		# flatten down all modules as they seem to be only one per row		
+		my $items = [];		
+		push @$items, @{$_->{modules}} foreach (@{$home->{rows}});
+
+		$cb->($items || []);
+	}, { 
+		deviceType => 'BROWSER',
+		limit => $limit || DEFAULT_LIMIT,
+	} );
+}
+
 sub featuredItem {
 	my ($self, $cb, $args) = @_;
 

@@ -123,6 +123,11 @@ sub handleFeed {
 	}
 
 	my $items = [{
+		name => cstring($client, 'HOME'),
+		image => 'plugins/TIDAL/html/home.png',
+		type => 'link',
+		url => \&getHome,
+	},{
 		name => cstring($client, 'PLUGIN_TIDAL_FEATURES'),
 		image => 'plugins/TIDAL/html/featured_MTL_svg_trophy.png',
 		type => 'link',
@@ -628,6 +633,128 @@ sub getFeatured {
 	});
 }
 
+#modules types: HIGHLIGHT_MODULE (highligths[]{title, item->{...}), {pagedList}->{items} PLAYLIST_LIST, ALBUM_LIST {pagedList}->{items}, MIX_LIST {pagedList}->{items}
+#MIX, PLAYLIST, ALBUM
+
+sub getHome {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->page(sub {
+		my $modules = shift;
+
+		my $items = [ map {
+			{
+				name => $_->{title},
+				type => 'link',
+				url => \&getModuleItems,
+				passthrough => [ { module => $_ } ],
+			}
+		} @$modules ];
+		
+		$cb->( {
+			items => $items
+		} );
+	}, 'pages/home' );
+}
+
+sub getModuleItems {
+	my ( $client, $cb, $args, $params ) = @_;
+	
+	my $module = $params->{module};
+	my $items = _renderModuleItems($client, $module->{type}, $module->{pagedList}->{items});
+	
+	#if ( $module->{showMore} && $module->{limit} < $module->{totalNumberOfItems} )
+	if ( $module->{showMore} ) {
+		unshift @$items, {
+			name => $module->{showMore}->{title},
+			type => 'link',
+			image => __PACKAGE__->_pluginDataFor('icon'),
+			url => \&getPage,
+			passthrough => [ { 
+				page => $module->{showMore}->{apiPath},
+				limit => $module->{totalNumberOfItems},
+			} ],
+		};
+	}
+	
+	$cb->({ 
+		items => $items 
+	});
+}	
+
+sub getPage {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->page(sub {
+		my $module = shift->[0];
+
+		my $items = _renderModuleItems($client, $module->{type}, $module->{pagedList}->{items});
+
+		$cb->({ 
+			items => $items
+		});
+	}, $params->{page}, $params->{limit} );
+}
+
+sub _renderModuleItems {
+	my ( $client, $type, $entries ) = @_;
+
+	my $items = [];	
+
+	if ($type eq 'MIX_LIST') {
+		$items = [ map { 
+			{
+				name => $_->{title},
+				type => 'playlist',
+				image => $_->{images}->{SMALL}->{url},
+				url => \&getMix,
+				favorites_url => 'tidal://mix:' . $_->{id},
+				passthrough => [ { id => $_->{id} } ],
+			}	
+		} @$entries ];
+	} 
+	elsif ($type eq 'PLAYLIST_LIST') {
+		$items = [ map { 
+			{
+				name => $_->{title},
+				type => 'playlist',
+				image => Plugins::TIDAL::API->getImageUrl($_, 'usePlaceholder', 'playlist'),
+				url => \&getPlaylist,
+				favorites_url => 'tidal://playlist:' . $_->{id},
+				passthrough => [ { uuid => $_->{uuid} } ],
+			}	
+		} @$entries ];
+	}
+	elsif ($type eq 'ALBUM_LIST') {
+		$items = [ map { 
+			{
+				name => $_->{title},
+				type => 'playlist',
+				image => Plugins::TIDAL::API->getImageUrl($_, 'usePlaceholder', 'album'),
+				url => \&getAlbum,
+				favorites_url => 'tidal://album:' . $_->{id},
+				passthrough => [ { id => $_->{id} } ],
+			}	
+		} @$entries ];
+	}	
+	elsif ($type eq 'TRACK_LIST') {
+		$items = [ map { 
+			{
+				name => $_->{title},
+				type => 'playlist',
+				#image => Plugins::TIDAL::API->getImageUrl($_, 'usePlaceholder', 'album'),
+				#url => \&getAlbum,
+				#favorites_url => 'tidal://album:' . $_->{id},
+				#passthrough => [ { id => $_->{id} } ],
+			}	
+		} @$entries ];		
+	} else {
+		$log->warn("Unknown module type $type");
+	}
+	
+	return $items;
+}
+
 sub getFeaturedItem {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -1033,7 +1160,7 @@ sub _makeAction {
 	return {
 		command => ['tidal_browse', 'playlist', $action],
 		fixedParams => {
-			type => $type,
+			type => $type, 
 			id => $id,
 		},
 	};
