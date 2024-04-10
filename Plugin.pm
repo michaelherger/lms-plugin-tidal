@@ -646,7 +646,7 @@ sub getHome {
 			{
 				name => $_->{title},
 				type => 'link',
-				url => \&getModuleItems,
+				url => \&getModule,
 				passthrough => [ { module => $_ } ],
 			}
 		} @$modules ];
@@ -657,14 +657,14 @@ sub getHome {
 	}, 'pages/home' );
 }
 
-sub getModuleItems {
+sub getModule {
 	my ( $client, $cb, $args, $params ) = @_;
 	
 	my $module = $params->{module};
-	my $items = _renderModuleItems($client, $module->{type}, $module->{pagedList}->{items});
+	my $items = _renderModule($client, $module->{type}, $module->{pagedList}->{items});
 	
-	#if ( $module->{showMore} && $module->{limit} < $module->{totalNumberOfItems} )
-	if ( $module->{showMore} ) {
+	if ( $module->{showMore} && @$items < $module->{pagedList}->{totalNumberOfItems} ) {
+	#if ( $module->{showMore} ) {
 		unshift @$items, {
 			name => $module->{showMore}->{title},
 			type => 'link',
@@ -672,7 +672,7 @@ sub getModuleItems {
 			url => \&getPage,
 			passthrough => [ { 
 				page => $module->{showMore}->{apiPath},
-				limit => $module->{totalNumberOfItems},
+				limit => $module->{pageList}->{totalNumberOfItems},
 			} ],
 		};
 	}
@@ -688,7 +688,7 @@ sub getPage {
 	getAPIHandler($client)->page(sub {
 		my $module = shift->[0];
 
-		my $items = _renderModuleItems($client, $module->{type}, $module->{pagedList}->{items});
+		my $items = _renderModule($client, $module->{type}, $module->{pagedList}->{items});
 
 		$cb->({ 
 			items => $items
@@ -696,7 +696,7 @@ sub getPage {
 	}, $params->{page}, $params->{limit} );
 }
 
-sub _renderModuleItems {
+sub _renderModule {
 	my ( $client, $type, $entries ) = @_;
 
 	my $items = [];	
@@ -738,16 +738,9 @@ sub _renderModuleItems {
 		} @$entries ];
 	}	
 	elsif ($type eq 'TRACK_LIST') {
-		$items = [ map { 
-			{
-				name => $_->{title},
-				type => 'playlist',
-				#image => Plugins::TIDAL::API->getImageUrl($_, 'usePlaceholder', 'album'),
-				#url => \&getAlbum,
-				#favorites_url => 'tidal://album:' . $_->{id},
-				#passthrough => [ { id => $_->{id} } ],
-			}	
-		} @$entries ];		
+		$log->error(Data::Dump::dump($entries));
+		$items = Plugins::TIDAL::API->cacheTrackMetadata($entries);
+		$items = _renderTracks($items, { addArtistToTitle => 1 });
 	} else {
 		$log->warn("Unknown module type $type");
 	}

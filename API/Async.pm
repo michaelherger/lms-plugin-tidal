@@ -179,6 +179,7 @@ sub page {
 
 		$cb->($items || []);
 	}, { 
+		_ttl => DYNAMIC_TTL, 
 		deviceType => 'BROWSER',
 		limit => $limit || DEFAULT_LIMIT,
 	} );
