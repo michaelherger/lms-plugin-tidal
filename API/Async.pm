@@ -35,6 +35,7 @@ use constant CAN_MORE_HTTP_VERBS => Slim::Networking::SimpleAsyncHTTP->can('dele
 my $cache = Slim::Utils::Cache->new();
 my $log = logger('plugin.tidal');
 my $prefs = preferences('plugin.tidal');
+my $serverPrefs = preferences('server');
 
 my %apiClients;
 
@@ -166,6 +167,49 @@ sub _filterAlbums {
 sub featured {
 	my ($self, $cb) = @_;
 	$self->_get("/featured", $cb);
+}
+
+sub home {
+	my ($self, $cb) = @_;
+
+	$self->page($cb, 'pages/home');
+}
+
+sub page {
+	my ($self, $cb, $path, $limit) = @_;
+
+	$self->_get("/$path", sub {
+		my $page = shift;
+
+		my $items = [];
+		# flatten down all modules as they seem to be only one per row
+		push @$items, @{$_->{modules}} foreach (@{$page->{rows}});
+
+		$cb->($items || []);
+	}, {
+		_ttl => DYNAMIC_TTL,
+		deviceType => 'BROWSER',
+		limit => $limit || DEFAULT_LIMIT,
+		locale => lc($serverPrefs->get('language')),
+	} );
+}
+
+sub dataPage {
+	my ($self, $cb, $path, $limit) = @_;
+
+	$self->_get("/$path", sub {
+		my $page = shift;
+
+		my $items = $page->{items};
+
+		$cb->($items || []);
+	}, {
+		_ttl => DYNAMIC_TTL,
+		_page => PLAYLIST_LIMIT,
+		deviceType => 'BROWSER',
+		limit => $limit || DEFAULT_LIMIT,
+		locale => lc($serverPrefs->get('language')),
+	} );
 }
 
 sub featuredItem {
@@ -678,7 +722,7 @@ sub _call {
 					$@ && $log->error($@);
 					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
 
-					if ($maxLimit && $result && ref $result eq 'HASH' && $maxLimit > $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - $pageSize > 0) {
+					if ($maxLimit && $result && ref $result eq 'HASH' && $maxLimit >= $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - $pageSize > 0) {
 						my $remaining = $result->{totalNumberOfItems} - $pageSize;
 						main::INFOLOG && $log->is_info && $log->info("We need to page to get $remaining more results");
 

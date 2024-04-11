@@ -123,6 +123,11 @@ sub handleFeed {
 	}
 
 	my $items = [{
+		name => cstring($client, 'HOME'),
+		image => 'plugins/TIDAL/html/home.png',
+		type => 'link',
+		url => \&getHome,
+	},{
 		name => cstring($client, 'PLUGIN_TIDAL_FEATURES'),
 		image => 'plugins/TIDAL/html/featured_MTL_svg_trophy.png',
 		type => 'link',
@@ -628,6 +633,97 @@ sub getFeatured {
 	});
 }
 
+sub getHome {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	getAPIHandler($client)->home(sub {
+		my $modules = shift;
+
+		my $items = [ map {
+			{
+				name => $_->{title},
+				type => 'link',
+				url => $_->{type} eq 'HIGHLIGHT_MODULE' ? \&getHighlights : \&getModule,
+				passthrough => [ { module => $_ } ],
+			}
+		} @$modules ];
+
+		$cb->( {
+			items => $items
+		} );
+	} );
+}
+
+sub getHighlights {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	my $module = $params->{module};
+	my $items = [];
+
+	foreach my $entry (@{$module->{highlights}}) {
+		next if $entry->{item}->{type} !~ /ALBUM|PLAYLIST|MIX|TRACK/;
+
+		my $title = $entry->{title};
+		my $item = $entry->{item}->{item};
+
+		($item) = @{Plugins::TIDAL::API->cacheTrackMetadata([ $item ])} if $entry->{item}->{type} eq 'TRACK';
+		$item = _renderItem($client, $item, { addArtistToTitle => 1 });
+		$item->{name} = "$title: $item->{name}" unless $entry->{item}->{type} eq 'MIX';
+
+		push @$items, $item;
+	}
+
+	$cb->({
+		image => 'plugins/TIDAL/html/personal.png',
+		items => $items,
+	});
+}
+
+sub getModule {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	my $module = $params->{module};
+	return $cb->() if $module->{type} !~ /MIX_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
+
+	my $items = $module->{pagedList}->{items};
+	$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $module->{type} eq 'TRACK_LIST';
+	$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ];
+
+	# don't ask for more if we have all items
+	unshift @$items, {
+		name => $module->{showMore}->{title},
+		type => 'link',
+		image => __PACKAGE__->_pluginDataFor('icon'),
+		url => \&getDataPage,
+		passthrough => [ {
+			page => $module->{pagedList}->{dataApiPath},
+			limit => $module->{pagedList}->{totalNumberOfItems},
+			type => $module->{type},
+		} ],
+	} if $module->{showMore} && @$items < $module->{pagedList}->{totalNumberOfItems};
+
+	$cb->({
+		items => $items
+	});
+}
+
+sub getDataPage {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	return $cb->() if $params->{type} !~ /MIX_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
+
+	getAPIHandler($client)->dataPage(sub {
+		my $items = shift;
+
+		$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $params->{type} eq 'TRACK_LIST';
+		$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ];
+
+		$cb->({
+			items => $items
+		});
+	}, $params->{page}, $params->{limit} );
+}
+
 sub getFeaturedItem {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -773,7 +869,7 @@ sub _renderPlaylists {
 
 	return [ map {
 		_renderPlaylist($_)
-	} @{$results->{items}}];
+	} @{$results}];
 }
 
 sub _renderPlaylist {
@@ -816,15 +912,17 @@ sub _renderAlbums {
 sub _renderAlbum {
 	my ($item, $addArtistToTitle) = @_;
 
+	# we could also join names
+	my $artist = $item->{artist} || $item->{artists}->[0] || {};
 	my $title = $item->{title};
-	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
+	$title .= ' - ' . $artist->{name} if $addArtistToTitle;
 
 	return {
 		name => $title,
 		line1 => $item->{title},
-		line2 => $item->{artist}->{name},
+		line2 => $artist->{name},
 		favorites_url => 'tidal://album:' . $item->{id},
-		favorites_title => $item->{title} . ' - ' . $item->{artist}->{name},
+		favorites_title => $item->{title} . ' - ' . $artist->{name},
 		favorites_type => 'playlist',
 		type => 'playlist',
 		url => \&getAlbum,
