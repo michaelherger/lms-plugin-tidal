@@ -310,6 +310,13 @@ sub _enabledAccounts {
 	return $enabledAccounts;
 }
 
+my %roleMap = (
+	MAIN => 'TRACKARTIST',
+	FEATURED => 'TRACKARTIST',
+	COMPOSER => 'COMPOSER',
+	CONDUCTOR => 'CONDUCTOR',
+);
+
 sub _prepareTrack {
 	my ($album, $track) = @_;
 
@@ -342,10 +349,23 @@ sub _prepareTrack {
 		REPLAYGAIN_TRACK_PEAK => $track->{trackPeakAmplitude} || $track->{peak},
 	};
 
-	my @trackArtists = map { $_->{name} } grep { $_->{name} ne $track->{artist}->{name} } @{ $track->{artists} };
-	if (scalar @trackArtists) {
-		$splitChar ||= substr(preferences('server')->get('splitList'), 0, 1);
-		$trackData->{TRACKARTIST} = join($splitChar, @trackArtists);
+	my %contributors;
+	foreach (grep { $_->{name} ne $track->{artist}->{name} && $_->{type} } @{ $track->{artists} }) {
+		my $type = $roleMap{$_->{type}};
+		my $name = $_->{name};
+
+		my $contributorsList = $contributors{$type} ||= [];
+		next if scalar grep { /$name/ } @$contributorsList;
+		push @$contributorsList, $name;
+	}
+
+
+	$splitChar ||= substr(preferences('server')->get('splitList'), 0, 1);
+	foreach my $type (values %roleMap) {
+		my $contributorsList = delete $contributors{$type} || [];
+		next unless scalar @$contributorsList;
+
+		$trackData->{$type} = join($splitChar, @$contributorsList);
 	}
 
 	return $trackData;
