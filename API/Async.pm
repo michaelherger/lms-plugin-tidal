@@ -35,6 +35,7 @@ use constant CAN_MORE_HTTP_VERBS => Slim::Networking::SimpleAsyncHTTP->can('dele
 my $cache = Slim::Utils::Cache->new();
 my $log = logger('plugin.tidal');
 my $prefs = preferences('plugin.tidal');
+my $serverPrefs = preferences('server');
 
 my %apiClients;
 
@@ -183,6 +184,7 @@ sub page {
 		_ttl => DYNAMIC_TTL, 
 		deviceType => 'BROWSER',
 		limit => $limit || DEFAULT_LIMIT,
+		locale => lc($serverPrefs->get('language')),
 	} );
 }
 
@@ -200,7 +202,7 @@ sub dataPage {
 		_page => PLAYLIST_LIMIT,  
 		deviceType => 'BROWSER',
 		limit => $limit || DEFAULT_LIMIT,
-		locale => preferences('server')->get('language'),
+		locale => lc($serverPrefs->get('language')),
 	} );
 }
 
