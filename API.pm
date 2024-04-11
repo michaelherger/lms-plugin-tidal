@@ -103,6 +103,11 @@ sub getImageUrl {
 		my $image = $images->{L} || $images->{M} || $images->{S};
 		$data->{cover} = $image->{url} if $image;
 	}
+	elsif (my $images = $data->{images}) {
+		# I'll let you decided, but LARGE is 1500x1500 and that's A LOT of data in the database
+		my $image = $images->{LARGE} || $images->{MEDIUM} || $images->{SMALL};
+		$data->{cover} = $image->{url} if $image;
+	}
 
 	return $data->{cover} || (!main::SCANNER && $usePlaceholder && Plugins::TIDAL::Plugin->_pluginDataFor('icon'));
 }
@@ -114,14 +119,14 @@ sub typeOfItem {
 	elsif ( defined $item->{hasPlaylists} && $item->{path} ) {
 		return 'category';
 	}
-	elsif ( $item->{type} && $item->{type} =~ /(?:ALBUM|EP|SINGLE)/ ) {
+	elsif ( ($item->{type} && $item->{type} =~ /(?:ALBUM|EP|SINGLE)/) || ($item->{releaseDate} && defined $item->{numberOfTracks}) ) {
 		return 'album';
 	}
 	# playlist items can be of various types: USER, EDITORIAL etc., but they should have a numberOfTracks element
-	elsif ( $item->{type} && defined $item->{numberOfTracks} && ($item->{created} || $item->{creator} || $item->{publicPlaylist} || $item->{lastUpdated}) ) {
+	elsif ( $item->{type} && defined $item->{numberOfTracks} && ($item->{created} || $item->{creator} || $item->{creators} || $item->{publicPlaylist} || $item->{lastUpdated}) ) {
 		return 'playlist';
 	}
-	elsif ( defined $item->{mixNumber} && $item->{artists} ) {
+	elsif ( (defined $item->{mixNumber} && $item->{artists}) || defined $item->{mixType} ) {
 		return 'mix'
 	}
 	# only artists have names? Others have titles?
@@ -151,13 +156,15 @@ sub cacheTrackMetadata {
 
 		my $oldMeta = $cache->get( 'tidal_meta_' . $entry->{id}) || {};
 		my $icon = $class->getImageUrl($entry, 'usePlaceholder', 'track');
+		my $artist = $entry->{artist};
+		($artist) = grep { $_->{type} eq 'MAIN'} @{$entry->{artists}} unless $artist;
 
 		# consolidate metadata in case parsing of stream came first (huh?)
 		my $meta = {
 			%$oldMeta,
 			id => $entry->{id},
 			title => $entry->{title},
-			artist => $entry->{artist},
+			artist => $artist,
 			artists => $entry->{artists},
 			album => $entry->{album}->{title},
 			album_id => $entry->{album}->{id},

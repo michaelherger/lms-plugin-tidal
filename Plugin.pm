@@ -707,7 +707,11 @@ sub getModule {
 	my ( $client, $cb, $args, $params ) = @_;
 
 	my $module = $params->{module};
-	my $items = _renderModule($client, $module->{type}, $module->{pagedList}->{items});
+	return $cb->() if $module->{type} !~ /MIX_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
+
+	my $items = $module->{pagedList}->{items};	
+	$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $module->{type} eq 'TRACK_LIST';
+	$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ];
 
 	# don't ask for more if we have all items
 	unshift @$items, {
@@ -730,67 +734,18 @@ sub getModule {
 sub getDataPage {
 	my ( $client, $cb, $args, $params ) = @_;
 
-	getAPIHandler($client)->dataPage(sub {
-		my $result = shift;
+	return $cb->() if $params->{type} !~ /MIX_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
 
-		my $items = _renderModule($client, $params->{type}, $result);
+	getAPIHandler($client)->dataPage(sub {
+		my $items = shift;
+
+		$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $params->{type} eq 'TRACK_LIST';
+		$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ];
 
 		$cb->({
 			items => $items
 		});
 	}, $params->{page}, $params->{limit} );
-}
-
-sub _renderModule {
-	my ( $client, $type, $entries ) = @_;
-
-	my $items = [];
-
-	if ($type eq 'MIX_LIST') {
-		$items = [ map {
-			{
-				name => $_->{title},
-				type => 'playlist',
-				image => $_->{images}->{SMALL}->{url},
-				url => \&getMix,
-				favorites_url => 'tidal://mix:' . $_->{id},
-				passthrough => [ { id => $_->{id} } ],
-			}
-		} @$entries ];
-	}
-	elsif ($type eq 'PLAYLIST_LIST') {
-		$items = [ map {
-			{
-				name => $_->{title},
-				type => 'playlist',
-				image => Plugins::TIDAL::API->getImageUrl($_, 'usePlaceholder', 'playlist'),
-				url => \&getPlaylist,
-				favorites_url => 'tidal://playlist:' . $_->{id},
-				passthrough => [ { uuid => $_->{uuid} } ],
-			}
-		} @$entries ];
-	}
-	elsif ($type eq 'ALBUM_LIST') {
-		$items = [ map {
-			{
-				name => $_->{title},
-				type => 'playlist',
-				image => Plugins::TIDAL::API->getImageUrl($_, 'usePlaceholder', 'album'),
-				url => \&getAlbum,
-				favorites_url => 'tidal://album:' . $_->{id},
-				passthrough => [ { id => $_->{id} } ],
-			}
-		} @$entries ];
-	}
-	elsif ($type eq 'TRACK_LIST') {
-		# I don't think we should cache it in Async b/c that means a lot of knowledge of the format
-		$items = Plugins::TIDAL::API->cacheTrackMetadata($entries);
-		$items = _renderTracks($items, { addArtistToTitle => 1 });
-	} else {
-		$log->warn("Unknown module type $type");
-	}
-
-	return $items;
 }
 
 sub getFeaturedItem {
@@ -938,7 +893,7 @@ sub _renderPlaylists {
 
 	return [ map {
 		_renderPlaylist($_)
-	} @{$results->{items}}];
+	} @{$results}];
 }
 
 sub _renderPlaylist {
@@ -1031,10 +986,8 @@ sub _renderTracks {
 sub _renderTrack {
 	my ($item, $addArtistToTitle, $playlistId, $index) = @_;
 
-	# we could also join names
-	my $artist = $item->{artist} || $item->{artists}->[0] || {};
 	my $title = $item->{title};
-	$title .= ' - ' . $artist->{name} if $addArtistToTitle;
+	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
 	my $url = "tidal://$item->{id}." . Plugins::TIDAL::API::getFormat();
 
 	my $fixedParams = {
@@ -1045,9 +998,9 @@ sub _renderTrack {
 	return {
 		name => $title,
 		type => 'audio',
-		favorites_title => $item->{title} . ' - ' . $artist->{name},
+		favorites_title => $item->{title} . ' - ' . $item->{artist}->{name},
 		line1 => $item->{title},
-		line2 => $artist->{name},
+		line2 => $item->{artist}->{name},
 		on_select => 'play',
 		url => $url,
 		play => $url,

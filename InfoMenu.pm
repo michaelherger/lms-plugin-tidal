@@ -517,7 +517,7 @@ sub _menuAlbumInfo {
 
 		push @$items, ( {
 			type => 'playlist',
-			name =>  $album->{artist}->{name},
+			name =>  $album->{artist}->{name} || $album->{artists}->[0]->{name},,
 			label => 'ARTIST',
 			itemActions => {
 				items => {
