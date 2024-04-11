@@ -20,8 +20,6 @@ my $log = Slim::Utils::Log->addLogCategory({
 
 my $prefs = preferences('plugin.tidal');
 
-use Plugins::TIDAL::API qw(IURL);
-
 sub initPlugin {
 	my $class = shift;
 
