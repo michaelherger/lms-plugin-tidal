@@ -20,6 +20,8 @@ my $log = Slim::Utils::Log->addLogCategory({
 
 my $prefs = preferences('plugin.tidal');
 
+use Plugins::TIDAL::API qw(IURL);
+
 sub initPlugin {
 	my $class = shift;
 
@@ -633,9 +635,6 @@ sub getFeatured {
 	});
 }
 
-#modules types: HIGHLIGHT_MODULE (highligths[]{title, item->{...}), {pagedList}->{items} PLAYLIST_LIST, ALBUM_LIST {pagedList}->{items}, MIX_LIST {pagedList}->{items}
-#MIX, PLAYLIST, ALBUM
-
 sub getHome {
 	my ( $client, $cb, $args, $params ) = @_;
 
@@ -646,51 +645,97 @@ sub getHome {
 			{
 				name => $_->{title},
 				type => 'link',
-				url => \&getModule,
+				url => $_->{type} eq 'HIGHLIGHT_MODULE' ? \&getHighlights : \&getModule,
 				passthrough => [ { module => $_ } ],
 			}
 		} @$modules ];
-		
+
 		$cb->( {
 			items => $items
 		} );
 	}, 'pages/home' );
 }
 
+sub getHighlights {
+	my ( $client, $cb, $args, $params ) = @_;
+
+	my $module = $params->{module};
+	my $items = [];
+
+	foreach my $entry (@{$module->{highlights}}) {
+		my $item;
+		my $title = $entry->{title};
+
+		$entry = $entry->{item};
+
+		# formats are not exactly consistent with the rest of the API. Small changes
+		# but requires a few exceptions. We could change getImageUrl and typeOfItem...
+		if ($entry->{type} eq 'ALBUM') {
+			$item = _renderAlbum($entry->{item}, { addArtistToTitle => 1 });
+		}
+		elsif ($entry->{type} eq 'PLAYLIST') {
+			$item = _renderPlaylist($entry->{item});
+			# image can't be 1280x1280...
+			my $image = $entry->{item}->{squareImage} =~ s/-/\//gr;
+			$item->{image} = IURL . $image . "/640x640.jpg";
+		}
+		elsif ($entry->{type} =~ /MIX/) {
+			$item = _renderMix($client, $entry->{item});
+			# image uses a different key (S/M/L) than current MIX
+			$item->{image} = $entry->{item}->{images}->{MEDIUM}->{url} || $entry->{item}->{images}->{SMALL}->{url} || $entry->{item}->{images}->{LARGE}->{url};;
+		}
+		elsif ($entry->{type} eq 'TRACK') {
+			# I don't think we should cache it in Async b/c that means a lot of knowledge of the format
+			my ($track) = @{Plugins::TIDAL::API->cacheTrackMetadata([ $entry->{item} ])};
+			$item = _renderTrack($track, { addArtistToTitle => 1 });
+		}
+		else {
+			$log->warn("unknow hightlight type: $entry->{type}");
+		}
+
+		$item->{name} = "$title: $item->{name}" unless $entry->{type} eq 'MIX';
+		push @$items, $item;
+	}
+
+	$cb->({
+		image => 'plugins/TIDAL/html/personal.png',
+		items => $items,
+	});
+}
+
 sub getModule {
 	my ( $client, $cb, $args, $params ) = @_;
-	
+
 	my $module = $params->{module};
 	my $items = _renderModule($client, $module->{type}, $module->{pagedList}->{items});
-	
-	if ( $module->{showMore} && @$items < $module->{pagedList}->{totalNumberOfItems} ) {
-	#if ( $module->{showMore} ) {
-		unshift @$items, {
-			name => $module->{showMore}->{title},
-			type => 'link',
-			image => __PACKAGE__->_pluginDataFor('icon'),
-			url => \&getPage,
-			passthrough => [ { 
-				page => $module->{showMore}->{apiPath},
-				limit => $module->{pageList}->{totalNumberOfItems},
-			} ],
-		};
-	}
-	
-	$cb->({ 
-		items => $items 
-	});
-}	
 
-sub getPage {
+	# don't ask for more if we have all items
+	unshift @$items, {
+		name => $module->{showMore}->{title},
+		type => 'link',
+		image => __PACKAGE__->_pluginDataFor('icon'),
+		url => \&getDataPage,
+		passthrough => [ {
+			page => $module->{pagedList}->{dataApiPath},
+			limit => $module->{pagedList}->{totalNumberOfItems},
+			type => $module->{type},
+		} ],
+	} if $module->{showMore} && @$items < $module->{pagedList}->{totalNumberOfItems};
+
+	$cb->({
+		items => $items
+	});
+}
+
+sub getDataPage {
 	my ( $client, $cb, $args, $params ) = @_;
 
-	getAPIHandler($client)->page(sub {
-		my $module = shift->[0];
+	getAPIHandler($client)->dataPage(sub {
+		my $result = shift;
 
-		my $items = _renderModule($client, $module->{type}, $module->{pagedList}->{items});
+		my $items = _renderModule($client, $params->{type}, $result);
 
-		$cb->({ 
+		$cb->({
 			items => $items
 		});
 	}, $params->{page}, $params->{limit} );
@@ -699,10 +744,10 @@ sub getPage {
 sub _renderModule {
 	my ( $client, $type, $entries ) = @_;
 
-	my $items = [];	
+	my $items = [];
 
 	if ($type eq 'MIX_LIST') {
-		$items = [ map { 
+		$items = [ map {
 			{
 				name => $_->{title},
 				type => 'playlist',
@@ -710,11 +755,11 @@ sub _renderModule {
 				url => \&getMix,
 				favorites_url => 'tidal://mix:' . $_->{id},
 				passthrough => [ { id => $_->{id} } ],
-			}	
+			}
 		} @$entries ];
-	} 
+	}
 	elsif ($type eq 'PLAYLIST_LIST') {
-		$items = [ map { 
+		$items = [ map {
 			{
 				name => $_->{title},
 				type => 'playlist',
@@ -722,11 +767,11 @@ sub _renderModule {
 				url => \&getPlaylist,
 				favorites_url => 'tidal://playlist:' . $_->{id},
 				passthrough => [ { uuid => $_->{uuid} } ],
-			}	
+			}
 		} @$entries ];
 	}
 	elsif ($type eq 'ALBUM_LIST') {
-		$items = [ map { 
+		$items = [ map {
 			{
 				name => $_->{title},
 				type => 'playlist',
@@ -734,17 +779,17 @@ sub _renderModule {
 				url => \&getAlbum,
 				favorites_url => 'tidal://album:' . $_->{id},
 				passthrough => [ { id => $_->{id} } ],
-			}	
+			}
 		} @$entries ];
-	}	
+	}
 	elsif ($type eq 'TRACK_LIST') {
-		$log->error(Data::Dump::dump($entries));
+		# I don't think we should cache it in Async b/c that means a lot of knowledge of the format
 		$items = Plugins::TIDAL::API->cacheTrackMetadata($entries);
 		$items = _renderTracks($items, { addArtistToTitle => 1 });
 	} else {
 		$log->warn("Unknown module type $type");
 	}
-	
+
 	return $items;
 }
 
@@ -936,15 +981,17 @@ sub _renderAlbums {
 sub _renderAlbum {
 	my ($item, $addArtistToTitle) = @_;
 
+	# we could also join names
+	my $artist = $item->{artist} || $item->{artists}->[0] || {};
 	my $title = $item->{title};
-	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
+	$title .= ' - ' . $artist->{name} if $addArtistToTitle;
 
 	return {
 		name => $title,
 		line1 => $item->{title},
-		line2 => $item->{artist}->{name},
+		line2 => $artist->{name},
 		favorites_url => 'tidal://album:' . $item->{id},
-		favorites_title => $item->{title} . ' - ' . $item->{artist}->{name},
+		favorites_title => $item->{title} . ' - ' . $artist->{name},
 		favorites_type => 'playlist',
 		type => 'playlist',
 		url => \&getAlbum,
@@ -984,8 +1031,10 @@ sub _renderTracks {
 sub _renderTrack {
 	my ($item, $addArtistToTitle, $playlistId, $index) = @_;
 
+	# we could also join names
+	my $artist = $item->{artist} || $item->{artists}->[0] || {};
 	my $title = $item->{title};
-	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
+	$title .= ' - ' . $artist->{name} if $addArtistToTitle;
 	my $url = "tidal://$item->{id}." . Plugins::TIDAL::API::getFormat();
 
 	my $fixedParams = {
@@ -996,9 +1045,9 @@ sub _renderTrack {
 	return {
 		name => $title,
 		type => 'audio',
-		favorites_title => $item->{title} . ' - ' . $item->{artist}->{name},
+		favorites_title => $item->{title} . ' - ' . $artist->{name},
 		line1 => $item->{title},
-		line2 => $item->{artist}->{name},
+		line2 => $artist->{name},
 		on_select => 'play',
 		url => $url,
 		play => $url,
@@ -1153,7 +1202,7 @@ sub _makeAction {
 	return {
 		command => ['tidal_browse', 'playlist', $action],
 		fixedParams => {
-			type => $type, 
+			type => $type,
 			id => $id,
 		},
 	};

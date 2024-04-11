@@ -170,18 +170,37 @@ sub featured {
 
 sub page {
 	my ($self, $cb, $path, $limit) = @_;
+	
 	$self->_get("/$path", sub {
-		my $home = shift;
+		my $page = shift;
 
-		# flatten down all modules as they seem to be only one per row		
 		my $items = [];		
-		push @$items, @{$_->{modules}} foreach (@{$home->{rows}});
+		# flatten down all modules as they seem to be only one per row					
+		push @$items, @{$_->{modules}} foreach (@{$page->{rows}});
 
 		$cb->($items || []);
 	}, { 
 		_ttl => DYNAMIC_TTL, 
 		deviceType => 'BROWSER',
 		limit => $limit || DEFAULT_LIMIT,
+	} );
+}
+
+sub dataPage {
+	my ($self, $cb, $path, $limit) = @_;
+	
+	$self->_get("/$path", sub {
+		my $page = shift;
+
+		my $items = $page->{items};
+
+		$cb->($items || []);
+	}, { 
+		_ttl => DYNAMIC_TTL, 
+		_page => PLAYLIST_LIMIT,  
+		deviceType => 'BROWSER',
+		limit => $limit || DEFAULT_LIMIT,
+		locale => preferences('server')->get('language'),
 	} );
 }
 
@@ -695,7 +714,7 @@ sub _call {
 					$@ && $log->error($@);
 					main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
 
-					if ($maxLimit && $result && ref $result eq 'HASH' && $maxLimit > $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - $pageSize > 0) {
+					if ($maxLimit && $result && ref $result eq 'HASH' && $maxLimit >= $result->{totalNumberOfItems} && $result->{totalNumberOfItems} - $pageSize > 0) {
 						my $remaining = $result->{totalNumberOfItems} - $pageSize;
 						main::INFOLOG && $log->is_info && $log->info("We need to page to get $remaining more results");
 
