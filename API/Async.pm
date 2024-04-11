@@ -169,19 +169,25 @@ sub featured {
 	$self->_get("/featured", $cb);
 }
 
+sub home {
+	my ($self, $cb) = @_;
+
+	$self->page($cb, 'pages/home');
+}
+
 sub page {
 	my ($self, $cb, $path, $limit) = @_;
-	
+
 	$self->_get("/$path", sub {
 		my $page = shift;
 
-		my $items = [];		
-		# flatten down all modules as they seem to be only one per row					
+		my $items = [];
+		# flatten down all modules as they seem to be only one per row
 		push @$items, @{$_->{modules}} foreach (@{$page->{rows}});
 
 		$cb->($items || []);
-	}, { 
-		_ttl => DYNAMIC_TTL, 
+	}, {
+		_ttl => DYNAMIC_TTL,
 		deviceType => 'BROWSER',
 		limit => $limit || DEFAULT_LIMIT,
 		locale => lc($serverPrefs->get('language')),
@@ -190,16 +196,16 @@ sub page {
 
 sub dataPage {
 	my ($self, $cb, $path, $limit) = @_;
-	
+
 	$self->_get("/$path", sub {
 		my $page = shift;
 
 		my $items = $page->{items};
 
 		$cb->($items || []);
-	}, { 
-		_ttl => DYNAMIC_TTL, 
-		_page => PLAYLIST_LIMIT,  
+	}, {
+		_ttl => DYNAMIC_TTL,
+		_page => PLAYLIST_LIMIT,
 		deviceType => 'BROWSER',
 		limit => $limit || DEFAULT_LIMIT,
 		locale => lc($serverPrefs->get('language')),

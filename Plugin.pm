@@ -638,7 +638,7 @@ sub getFeatured {
 sub getHome {
 	my ( $client, $cb, $args, $params ) = @_;
 
-	getAPIHandler($client)->page(sub {
+	getAPIHandler($client)->home(sub {
 		my $modules = shift;
 
 		my $items = [ map {
@@ -653,7 +653,7 @@ sub getHome {
 		$cb->( {
 			items => $items
 		} );
-	}, 'pages/home' );
+	} );
 }
 
 sub getHighlights {
@@ -663,37 +663,15 @@ sub getHighlights {
 	my $items = [];
 
 	foreach my $entry (@{$module->{highlights}}) {
-		my $item;
+		next if $entry->{item}->{type} !~ /ALBUM|PLAYLIST|MIX|TRACK/;
+
 		my $title = $entry->{title};
+		my $item = $entry->{item}->{item};
 
-		$entry = $entry->{item};
+		($item) = @{Plugins::TIDAL::API->cacheTrackMetadata([ $item ])} if $entry->{item}->{type} eq 'TRACK';
+		$item = _renderItem($client, $item, { addArtistToTitle => 1 });
+		$item->{name} = "$title: $item->{name}" unless $entry->{item}->{type} eq 'MIX';
 
-		# formats are not exactly consistent with the rest of the API. Small changes
-		# but requires a few exceptions. We could change getImageUrl and typeOfItem...
-		if ($entry->{type} eq 'ALBUM') {
-			$item = _renderAlbum($entry->{item}, { addArtistToTitle => 1 });
-		}
-		elsif ($entry->{type} eq 'PLAYLIST') {
-			$item = _renderPlaylist($entry->{item});
-			# image can't be 1280x1280...
-			my $image = $entry->{item}->{squareImage} =~ s/-/\//gr;
-			$item->{image} = IURL . $image . "/640x640.jpg";
-		}
-		elsif ($entry->{type} =~ /MIX/) {
-			$item = _renderMix($client, $entry->{item});
-			# image uses a different key (S/M/L) than current MIX
-			$item->{image} = $entry->{item}->{images}->{MEDIUM}->{url} || $entry->{item}->{images}->{SMALL}->{url} || $entry->{item}->{images}->{LARGE}->{url};;
-		}
-		elsif ($entry->{type} eq 'TRACK') {
-			# I don't think we should cache it in Async b/c that means a lot of knowledge of the format
-			my ($track) = @{Plugins::TIDAL::API->cacheTrackMetadata([ $entry->{item} ])};
-			$item = _renderTrack($track, { addArtistToTitle => 1 });
-		}
-		else {
-			$log->warn("unknow hightlight type: $entry->{type}");
-		}
-
-		$item->{name} = "$title: $item->{name}" unless $entry->{type} eq 'MIX';
 		push @$items, $item;
 	}
 
@@ -709,7 +687,7 @@ sub getModule {
 	my $module = $params->{module};
 	return $cb->() if $module->{type} !~ /MIX_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
 
-	my $items = $module->{pagedList}->{items};	
+	my $items = $module->{pagedList}->{items};
 	$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $module->{type} eq 'TRACK_LIST';
 	$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ];
 

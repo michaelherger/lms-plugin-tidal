@@ -104,8 +104,7 @@ sub getImageUrl {
 		$data->{cover} = $image->{url} if $image;
 	}
 	elsif (my $images = $data->{images}) {
-		# I'll let you decided, but LARGE is 1500x1500 and that's A LOT of data in the database
-		my $image = $images->{LARGE} || $images->{MEDIUM} || $images->{SMALL};
+		my $image = $images->{MEDIUM} || $images->{SMALL} || $images->{LARGE};
 		$data->{cover} = $image->{url} if $image;
 	}
 
