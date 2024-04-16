@@ -267,6 +267,8 @@ sub album {
 	$self->_get("/albums/$id", sub {
 		my $album = shift;
 		$cb->($album);
+	},{
+		limit => MAX_LIMIT
 	});
 }
 
