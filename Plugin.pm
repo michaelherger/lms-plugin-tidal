@@ -39,6 +39,8 @@ sub initPlugin {
 	}
 
 	Slim::Player::ProtocolHandlers->registerHandler('tidal', 'Plugins::TIDAL::ProtocolHandler');
+	# Hijack the old wimp:// URLs
+	Slim::Player::ProtocolHandlers->registerHandler('wimp', 'Plugins::TIDAL::ProtocolHandler');
 	Slim::Music::Import->addImporter('Plugins::TIDAL::Importer', { use => 1 });
 
 	# Track Info item

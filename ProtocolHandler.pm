@@ -27,7 +27,7 @@ my $cache = Slim::Utils::Cache->new;
 # https://tidal.com/browse/album/95570764
 # https://tidal.com/browse/playlist/5a36919b-251c-4fa7-802c-b659aef04216
 my $URL_REGEX = qr{^https://(?:\w+\.)?tidal.com/(?:browse/)?(track|playlist|album|artist|mix)/([a-z\d-]+)}i;
-my $URI_REGEX = qr{^tidal://(playlist|album|artist|mix|):?([0-9a-z-]+)}i;
+my $URI_REGEX = qr{^(?:tidal|wimp)://(playlist|album|artist|mix|):?([0-9a-z-]+)}i;
 Slim::Player::ProtocolHandlers->registerURLHandler($URL_REGEX, __PACKAGE__);
 Slim::Player::ProtocolHandlers->registerURLHandler($URI_REGEX, __PACKAGE__);
 
@@ -37,7 +37,7 @@ sub canSeek { 1 }
 
 sub getFormatForURL {
 	my ($class, $url) = @_;
-	return if $url =~ m{^tidal://.+:.+};
+	return if $url =~ m{^(?:tidal|wimp)://.+:.+};
 	return Plugins::TIDAL::API::getFormat();
 }
 
@@ -284,7 +284,7 @@ sub getIcon {
 }
 
 sub getId {
-	my ($id) = $_[0] =~ m|tidal://(\d+)|;
+	my ($id) = $_[0] =~ m{(?:tidal|wimp)://(\d+)};
 	return $id;
 }
 
