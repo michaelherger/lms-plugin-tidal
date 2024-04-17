@@ -281,6 +281,8 @@ sub albumTracks {
 		$tracks = Plugins::TIDAL::API->cacheTrackMetadata($tracks) if $tracks;
 
 		$cb->($tracks || []);
+	},{
+		limit => MAX_LIMIT
 	});
 }
 
