@@ -490,6 +490,11 @@ sub _menuTrackInfo {
 			},
 		},
 	}, {
+		name => cstring($api->client, 'PLUGIN_TIDAL_TRACK_MIX'),
+		type => 'playlist',
+		url => \&Plugins::TIDAL::Plugin::getTrackRadio,
+		passthrough => [{ id => $id }],
+	}, {
 		type => 'text',
 		name => sprintf('%s:%02s', int($track->{duration} / 60), $track->{duration} % 60),
 		label => 'LENGTH',
