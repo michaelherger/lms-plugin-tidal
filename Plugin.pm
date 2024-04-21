@@ -27,6 +27,12 @@ sub initPlugin {
 		quality => 'HIGH',
 	});
 
+	# reset the API ref when a player changes user
+	$prefs->setChange( sub {
+		my ($pref, $userId, $client) = @_;
+		$client->pluginData(api => 0);
+	}, 'userId');
+
 	Plugins::TIDAL::API::Auth->init();
 
 	if (main::WEBUI) {
@@ -252,8 +258,6 @@ sub selectAccount {
 			name => $name,
 			url => sub {
 				my ($client, $cb2, $params, $args) = @_;
-
-				$client->pluginData(api => 0);
 				$prefs->client($client)->set('userId', $args->{id});
 
 				$cb2->({ items => [{
