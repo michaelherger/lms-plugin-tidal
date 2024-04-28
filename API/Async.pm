@@ -188,6 +188,7 @@ sub page {
 		$cb->($items || []);
 	}, {
 		_ttl => DYNAMIC_TTL,
+		_personal => 1,
 		deviceType => 'BROWSER',
 		limit => $limit || DEFAULT_LIMIT,
 		locale => lc($serverPrefs->get('language')),
