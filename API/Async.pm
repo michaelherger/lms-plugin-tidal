@@ -206,6 +206,7 @@ sub dataPage {
 		$cb->($items || []);
 	}, {
 		_ttl => DYNAMIC_TTL,
+		_personal => 1,
 		_page => PLAYLIST_LIMIT,
 		deviceType => 'BROWSER',
 		limit => $limit || DEFAULT_LIMIT,
