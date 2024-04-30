@@ -13,6 +13,8 @@ use Plugins::TIDAL::API::Async;
 use Plugins::TIDAL::API::Auth;
 use Plugins::TIDAL::ProtocolHandler;
 
+use constant MODULE_MATCH_REGEX => qr/MIX_LIST|MIXED_TYPES_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
+
 my $log = Slim::Utils::Log->addLogCategory({
 	'category'    => 'plugin.tidal',
 	'description' => 'PLUGIN_TIDAL_NAME',
@@ -653,7 +655,16 @@ sub getHome {
 				url => $_->{type} eq 'HIGHLIGHT_MODULE' ? \&getHighlights : \&getModule,
 				passthrough => [ { module => $_ } ],
 			}
-		} @$modules ];
+		} grep {
+			my $knownType = ($_->{type} =~ MODULE_MATCH_REGEX || $_->{type} eq 'HIGHLIGHT_MODULE');
+
+			if (main::INFOLOG && $log->is_info && !$knownType) {
+				$log->info('Unknown type: ' . $_->{type});
+				main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($_));
+			}
+
+			$knownType;
+		} @{$modules || []} ];
 
 		$cb->( {
 			items => $items
@@ -690,7 +701,7 @@ sub getModule {
 	my ( $client, $cb, $args, $params ) = @_;
 
 	my $module = $params->{module};
-	return $cb->() if $module->{type} !~ /MIX_LIST|MIXED_TYPES_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
+	return $cb->() if $module->{type} !~ MODULE_MATCH_REGEX;
 
 	my $items = $module->{pagedList}->{items};
 	$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $module->{type} eq 'TRACK_LIST';
