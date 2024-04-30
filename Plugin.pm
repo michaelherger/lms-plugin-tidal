@@ -25,6 +25,7 @@ sub initPlugin {
 
 	$prefs->init({
 		quality => 'HIGH',
+		preferExplicit => 0,
 	});
 
 	# reset the API ref when a player changes user
@@ -920,6 +921,7 @@ sub _renderAlbum {
 
 	# we could also join names
 	my $artist = $item->{artist} || $item->{artists}->[0] || {};
+	$item->{title} .= ' [E]' if $item->{explicit};
 	my $title = $item->{title};
 	$title .= ' - ' . $artist->{name} if $addArtistToTitle;
 

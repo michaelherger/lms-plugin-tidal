@@ -5,6 +5,7 @@
 			<tr>
 				<th>[% "PLUGIN_TIDAL_ACCOUNT" | string %][% "COLON" | string %]</th>
 				<th>[% "PLUGIN_TIDAL_IMPORT_LIBRARY"| string %][% "COLON" | string %]</th>
+				<th>[% "PLUGIN_TIDAL_EXPLICIT_ALBUMS"| string %][% "COLON" | string %]</th>
 				<th></th>
 			</tr>
 		[% FOREACH creds = credentials %]
@@ -15,6 +16,13 @@
 					<select class="stdedit" name="pref_dontimport_[% accountId %]">
 						<option [% IF !dontImportAccounts.$accountId %]selected [% END %]value="0">[% "YES"| string %]</option>
 						<option [% IF dontImportAccounts.$accountId %]selected [% END %]value="1">[% "NO" | string %]</option>
+					</select>
+				</td>
+				<td style="vertical-align: middle; padding-right: 10px">
+					<select class="stdedit" name="pref_explicit_[% accountId %]">
+						<option [% IF !explicitAlbumHandling.$accountId %]selected [% END %]value="0">[% "PLUGIN_TIDAL_HIDE_EXPLICIT"| string %]</option>
+						<option [% IF explicitAlbumHandling.$accountId == 1 %]selected [% END %]value="1">[% "PLUGIN_TIDAL_SHOW_EXPLICIT" | string %]</option>
+						<option [% IF explicitAlbumHandling.$accountId == 2 %]selected [% END %]value="2">[% "PLUGIN_TIDAL_SHOW_ALL" | string %]</option>
 					</select>
 				</td>
 				<td style="vertical-align: middle">

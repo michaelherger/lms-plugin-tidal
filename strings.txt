@@ -261,3 +261,19 @@ PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST
 	DE	Aus TIDAL Wiedergabeliste entfernen
 	EN	Remove from this playlist
 	FR	Supprimer de cette liste de lecture
+
+PLUGIN_TIDAL_EXPLICIT_ALBUMS
+	DE	Albenfilter
+	EN	Album list filter
+
+PLUGIN_TIDAL_HIDE_EXPLICIT
+	DE	Nicht-explizit bevorzugen
+	EN	Prefer non-explicit version
+
+PLUGIN_TIDAL_SHOW_EXPLICIT
+	DE	Explizite Version bevorzugen
+	EN	Prefer explicit version
+
+PLUGIN_TIDAL_SHOW_ALL
+	DE	Beide Albumversionen anzeigen
+	EN	Show both

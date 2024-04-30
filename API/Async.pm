@@ -117,7 +117,7 @@ sub artistAlbums {
 
 	$self->_get("/artists/$id/albums", sub {
 		my $artist = shift;
-		my $albums = _filterAlbums($artist->{items}) if $artist;
+		my $albums = $self->_filterAlbums($artist->{items}) if $artist;
 		$cb->($albums || []);
 	},{
 		limit => MAX_LIMIT,
@@ -153,15 +153,36 @@ sub trackRadio {
 
 # try to remove duplicates
 sub _filterAlbums {
-	my ($albums) = shift || return;
+	my ($self, $albums) = @_;
 
-	my %seen;
+	my $explicitAlbumHandling = $prefs->get('explicitAlbumHandling') || {};
+
+	my (%seen, %explicit, %nonExplicit);
+	my $wantsExplicit = $explicitAlbumHandling->{$self->userId} || 0;
+	my $wantsNonExplicit = !$wantsExplicit || $explicitAlbumHandling->{$self->userId} == 2;
+	my $wantsBoth = $wantsExplicit && $wantsNonExplicit;
+
+	my $explicitFilter = $wantsBoth
+		? sub { 1 }                                   # we want explicit and non explicit
+		: $wantsExplicit
+			? sub { $_[0] || !$explicit{$_[1]} }       # we only want the non-explicit version, unless there's none, in which case we use explicit version
+			: sub { !$_[0] || !$nonExplicit{$_[1]} };  # the opposite of the above: we prefer explicit over non-explicit, if both are available
+
 	return [ grep {
-		scalar (grep /^LOSSLESS$/, @{$_->{mediaMetadata}->{tags} || []}) && !$seen{$_->{fingerprint}}++
-	} map { {
-			%$_,
-			fingerprint => join(':', $_->{artist}->{id}, $_->{title}, $_->{numberOfTracks}),
-	} } @$albums ];
+		my $fingerprint = $_->{fingerprint};
+
+		scalar (grep /^LOSSLESS$/, @{$_->{mediaMetadata}->{tags} || []})
+			&& $explicitFilter->($_->{explicit}, $fingerprint)
+			&& !$seen{$fingerprint}++
+	} map {
+		my $item = $_;
+		my $fingerprint = join(':', $item->{artist}->{id}, $item->{title}, $item->{numberOfTracks}, ($wantsBoth ? $item->{explicit} : undef));
+
+		$nonExplicit{$fingerprint} = !($explicit{$fingerprint} = $_->{explicit});
+
+		$item->{fingerprint} = $fingerprint;
+		$item;
+	} @{$albums || []} ];
 }
 
 sub featured {

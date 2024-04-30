@@ -35,12 +35,17 @@ sub handler {
 
 	if ($params->{saveSettings}) {
 		my $dontImportAccounts = $prefs->get('dontImportAccounts') || {};
+		my $explicitAlbumHandling = $prefs->get('explicitAlbumHandling') || {};
 		foreach my $prefName (keys %$params) {
 			if ($prefName =~ /^pref_dontimport_(.*)/) {
 				$dontImportAccounts->{$1} = $params->{$prefName};
 			}
+			elsif ($prefName =~ /^pref_explicit_(.*)/) {
+				$explicitAlbumHandling->{$1} = $params->{$prefName} || 0;
+			}
 		}
 		$prefs->set('dontImportAccounts', $dontImportAccounts);
+		$prefs->set('explicitAlbumHandling', $explicitAlbumHandling);
 	}
 
 	return $class->SUPER::handler($client, $params);
@@ -61,6 +66,7 @@ sub beforeRender {
 	} values %$accounts] if scalar keys %$accounts;
 
 	$params->{dontImportAccounts} = $prefs->get('dontImportAccounts') || {};
+	$params->{explicitAlbumHandling} = $prefs->get('explicitAlbumHandling') || {};
 }
 
 1;
