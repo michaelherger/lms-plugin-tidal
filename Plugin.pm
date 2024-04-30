@@ -690,7 +690,7 @@ sub getModule {
 	my ( $client, $cb, $args, $params ) = @_;
 
 	my $module = $params->{module};
-	return $cb->() if $module->{type} !~ /MIX_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
+	return $cb->() if $module->{type} !~ /MIX_LIST|MIXED_TYPES_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
 
 	my $items = $module->{pagedList}->{items};
 	$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $module->{type} eq 'TRACK_LIST';
