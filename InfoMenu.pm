@@ -297,7 +297,7 @@ sub menuBrowse {
 	# allows us to find our back our root feed. During drill-down, that prefix
 	# is removed and XMLBrowser descends the feed.
 	# ideally, we would like to not have to do that but that means we leave some
-	# breadcrums *before* we arrive here, in the _renderXXX familiy but I don't
+	# breadcrums *before* we arrive here, in the _renderXXX family but I don't
 	# know how so we have to build our own "fake" dispatch just for that
 	# we only need to do that when we have to redescend further that hierarchy,
 	# not when it's one shot and we assume that only one controller wants to use
@@ -323,7 +323,7 @@ sub menuBrowse {
 				$rootFeeds{$key} = \$feed;
 				# no need to add any action, the root 'tidal_browse' is memorized and cliQuery
 				# will provide us with item_id hierarchy. All we need is to know where our root
-				# by prefixing item_id with a min 8-digits length hexa string
+				# by prefixing item_id with a min 8-digits length hex string
 				$cb->($feed);
 			}, $id );
 
@@ -341,6 +341,14 @@ sub menuBrowse {
 			my $cache = Slim::Utils::Cache->new;
 			my $track = Plugins::TIDAL::Plugin::_renderItem( $client, $cache->get('tidal_meta_' . $id), { addArtistToTitle => 1 } );
 			$cb->([$track]);
+
+		} elsif ( $type eq 'track_mix' ) {
+
+			Plugins::TIDAL::Plugin::getAPIHandler($client)->trackRadio(sub {
+				my $feed = [ map { Plugins::TIDAL::Plugin::_renderItem( $client, $_) } @{$_[0]} ] if $_[0];
+				# don't memorize the feed as we won't redescend into it (only maybe more 'M')
+				$cb->($feed);
+			}, $id);
 =comment
 		} elsif ( $type eq 'podcast' ) {
 
@@ -489,12 +497,29 @@ sub _menuTrackInfo {
 				fixedParams => { type => 'artist', id => $track->{artist}->{id} },
 			},
 		},
-	}, {
-		name => cstring($api->client, 'PLUGIN_TIDAL_TRACK_MIX'),
-		type => 'playlist',
-		url => \&Plugins::TIDAL::Plugin::getTrackRadio,
-		passthrough => [{ id => $id }],
-	}, {
+	} );
+
+	if ($params->{menu}) {
+		push @$items, {
+			name => cstring($api->client, 'PLUGIN_TIDAL_TRACK_MIX'),
+			type => 'playlist',
+			itemActions => {
+				items => {
+					command     => ['tidal_browse', 'items'],
+					fixedParams => { type => 'track_mix', id => $id },
+				},
+			},
+		};
+	} else {
+		push @$items, {
+			name => cstring($api->client, 'PLUGIN_TIDAL_TRACK_MIX'),
+			type => 'playlist',
+			url => \&Plugins::TIDAL::Plugin::getTrackRadio,
+			passthrough => [{ id => $id }],
+		};
+	};
+
+	push @$items, ( {
 		type => 'text',
 		name => sprintf('%s:%02s', int($track->{duration} / 60), $track->{duration} % 60),
 		label => 'LENGTH',
