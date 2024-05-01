@@ -178,7 +178,8 @@ sub _filterAlbums {
 		my $item = $_;
 		my $fingerprint = join(':', $item->{artist}->{id}, $item->{title}, $item->{numberOfTracks}, ($wantsBoth ? $item->{explicit} : undef));
 
-		$nonExplicit{$fingerprint} = !($explicit{$fingerprint} = $_->{explicit});
+		$explicit{$fingerprint} ||= $_->{explicit};
+		$nonExplicit{$fingerprint} ||= !$_->{explicit};
 
 		$item->{fingerprint} = $fingerprint;
 		$item;
