@@ -705,7 +705,17 @@ sub getModule {
 
 	my $items = $module->{pagedList}->{items};
 	$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $module->{type} eq 'TRACK_LIST';
-	$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ];
+
+	$items = [ map {
+		my $item = $_;
+
+		# sometimes the items are nested inside another "item" object...
+		if ($item->{item} && ref $item->{item} && $item->{type} && scalar keys %$item == 2) {
+			$item = $item->{item};
+		}
+
+		_renderItem($client, $item, { addArtistToTitle => 1 });
+	} @$items ];
 
 	# don't ask for more if we have all items
 	unshift @$items, {
