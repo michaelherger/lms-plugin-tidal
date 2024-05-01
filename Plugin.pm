@@ -983,7 +983,7 @@ sub _renderTracks {
 	return [ map {
 		# due to the need of an index when deleting a track from a playlist (...)
 		# we insert it here for convenience, but we could search the trackId index
-		# the whole playlist that should be cached...
+		# in the whole playlist which should be cached...
 		_renderTrack($_, $args->{addArtistToTitle}, $args->{playlistId}, $index++);
 	} @$tracks ];
 }

@@ -220,6 +220,7 @@ sub menuAction {
 	if ( defined $itemId ) {
 		my ($key) = $itemId =~ /([^\.]+)/;
 		my $cached = ${$rootFeeds{$key}};
+		main::INFOLOG && $log->is_info && $log->info("re-drilling using cache key: $key");
 		Slim::Control::XMLBrowser::cliQuery('tidal_action', $cached, $request);
 		return;
 	}
@@ -289,13 +290,14 @@ sub menuBrowse {
 	if ( defined $itemId ) {
 		my ($key) = $itemId =~ /([^\.]+)/;
 		my $cached = ${$rootFeeds{$key}};
+		main::INFOLOG && $log->is_info && $log->info("re-drilling using cache key: $key");
 		Slim::Control::XMLBrowser::cliQuery('tidal_browse', $cached, $request);
 		return;
 	}
 
 	# this key will prefix each action's hierarchy that JSON will sent us which
-	# allows us to find our back our root feed. During drill-down, that prefix
-	# is removed and XMLBrowser descends the feed.
+	# allows us to find back our root feed. During drill-down, that prefix is
+	# removed and XMLBrowser descends the feed.
 	# ideally, we would like to not have to do that but that means we leave some
 	# breadcrums *before* we arrive here, in the _renderXXX family but I don't
 	# know how so we have to build our own "fake" dispatch just for that
@@ -330,9 +332,9 @@ sub menuBrowse {
 		} elsif ( $type eq 'playlist' ) {
 
 			Plugins::TIDAL::Plugin::getAPIHandler($client)->playlist(sub {
-				my $feed = [ map { Plugins::TIDAL::Plugin::_renderItem( $client, $_) } @{$_[0]} ] if $_[0];
-				# we don't need to memorize the feed as we won't redescend into it
-				$cb->($feed);
+				my $items = [ map { Plugins::TIDAL::Plugin::_renderItem( $client, $_) } @{$_[0]} ] if $_[0];
+				# don't memorize the feed as we won't redescend into it (maybe we'll use 'M' again)
+				$cb->( { items => $items } );
 			}, $id );
 
 		} elsif ( $type eq 'track' ) {
@@ -340,13 +342,15 @@ sub menuBrowse {
 			# track must be in cache, no memorizing
 			my $cache = Slim::Utils::Cache->new;
 			my $track = Plugins::TIDAL::Plugin::_renderItem( $client, $cache->get('tidal_meta_' . $id), { addArtistToTitle => 1 } );
-			$cb->([$track]);
+			$cb->( { items => [ $track ] } );
 
 		} elsif ( $type eq 'track_mix' ) {
 
 			Plugins::TIDAL::Plugin::getAPIHandler($client)->trackRadio(sub {
-				my $feed = [ map { Plugins::TIDAL::Plugin::_renderItem( $client, $_) } @{$_[0]} ] if $_[0];
-				# don't memorize the feed as we won't redescend into it (only maybe more 'M')
+				my $feed = { };
+				$feed->{items} = [ map { Plugins::TIDAL::Plugin::_renderItem( $client, $_) } @{$_[0]} ] if $_[0];
+				# memorize feed as we will drill-down again
+				$rootFeeds{$key} = \$feed;
 				$cb->($feed);
 			}, $id);
 =comment
@@ -355,7 +359,7 @@ sub menuBrowse {
 			# we need to re-acquire the podcast itself
 			Plugins::TIDAL::Plugin::getAPIHandler($client)->podcast(sub {
 				my $podcast = shift;
-				getPodcastEpisodes($client, $cb, $args, {
+				Plugins::TIDAL::Plugin::getPodcastEpisodes($client, $cb, $args, {
 					id => $id,
 					podcast => $podcast,
 				} );
@@ -366,7 +370,7 @@ sub menuBrowse {
 			# episode must be in cache, no memorizing
 			my $cache = Slim::Utils::Cache->new;
 			my $episode = Plugins::TIDAL::Plugin::_renderItem( $client, $cache->get('tidal_episode_meta_' . $id) );
-			$cb->([$episode]);
+			$cb->( { items => [$episode] });
 =cut
 		}
 	}, $request );
@@ -497,29 +501,30 @@ sub _menuTrackInfo {
 				fixedParams => { type => 'artist', id => $track->{artist}->{id} },
 			},
 		},
-	} );
-
-	if ($params->{menu}) {
-		push @$items, {
-			name => cstring($api->client, 'PLUGIN_TIDAL_TRACK_MIX'),
-			type => 'playlist',
-			itemActions => {
-				items => {
-					command     => ['tidal_browse', 'items'],
-					fixedParams => { type => 'track_mix', id => $id },
-				},
+	}, {
+		name => cstring($api->client, 'PLUGIN_TIDAL_TRACK_MIX'),
+		type => 'playlist',
+		url => \&Plugins::TIDAL::Plugin::getTrackRadio,
+		passthrough => [{ id => $id }],
+		itemActions => {
+			items => {
+				command     => ['tidal_browse', 'items'],
+				fixedParams => { type => 'track_mix', id => $id },
 			},
-		};
-	} else {
-		push @$items, {
-			name => cstring($api->client, 'PLUGIN_TIDAL_TRACK_MIX'),
-			type => 'playlist',
-			url => \&Plugins::TIDAL::Plugin::getTrackRadio,
-			passthrough => [{ id => $id }],
-		};
-	};
-
-	push @$items, ( {
+			play => {
+				command     => ['tidal_browse', 'playlist', 'load'],
+				fixedParams => { type => 'track_mix', id => $id },
+			},
+			add => {
+				command     => ['tidal_browse', 'playlist', 'add'],
+				fixedParams => { type => 'track_mix', id => $id },
+			},
+			insert => {
+				command     => ['tidal_browse', 'playlist', 'insert'],
+				fixedParams => { type => 'track_mix', id => $id },
+			},
+		},
+	}, {
 		type => 'text',
 		name => sprintf('%s:%02s', int($track->{duration} / 60), $track->{duration} % 60),
 		label => 'LENGTH',
