@@ -813,7 +813,7 @@ sub _call {
 					$cb->();
 				},
 				{
-					cache => ($method eq 'get' && !$noCache) ? 1 : 0,
+					cache => ($method eq 'get' && !$noCache && !$personalCache) ? 1 : 0,
 				}
 			);
 
