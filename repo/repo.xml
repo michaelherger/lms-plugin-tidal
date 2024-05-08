@@ -5,6 +5,7 @@
       <category>musicservices</category>
       <url>https://github.com/michaelherger/lms-plugin-tidal/releases/download/1.4.6/TIDAL.zip</url>
       <link>https://github.com/michaelherger/lms-plugin-tidal</link>
+      <icon>https://raw.githubusercontent.com/michaelherger/lms-plugin-tidal/main/HTML/EN/plugins/TIDAL/html/tidal_MTL_svg_tidal.png</icon>
       <title lang="EN">TIDAL local</title>
       <desc lang="EN">TIDAL for local LMS use</desc>
       <creator>Michael Herger, philippe_44</creator>
