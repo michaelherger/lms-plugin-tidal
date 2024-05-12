@@ -10,6 +10,7 @@
   <optionsURL>plugins/TIDAL/settings.html</optionsURL>
   <icon>plugins/TIDAL/html/tidal_MTL_svg_tidal.png</icon>
   <onlineLibrary>true</onlineLibrary>
+  <category>musicservices</category>
   <targetApplication>
     <minVersion>8.3.0</minVersion>
     <maxVersion>*</maxVersion>
