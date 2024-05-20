@@ -265,15 +265,19 @@ PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST
 PLUGIN_TIDAL_EXPLICIT_ALBUMS
 	DE	Albenfilter
 	EN	Album list filter
+	FR	Filtre d'albums
 
 PLUGIN_TIDAL_HIDE_EXPLICIT
 	DE	Nicht-explizit bevorzugen
 	EN	Prefer non-explicit version
+	FR	Préférer les versions non explicites
 
 PLUGIN_TIDAL_SHOW_EXPLICIT
 	DE	Explizite Version bevorzugen
 	EN	Prefer explicit version
+	FR	Préférer les versions explicites
 
 PLUGIN_TIDAL_SHOW_ALL
 	DE	Beide Albumversionen anzeigen
 	EN	Show both
+	FR	Montrer les deux versions des albums.
