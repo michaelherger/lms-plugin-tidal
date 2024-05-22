@@ -282,7 +282,7 @@ sub albumInfoMenu {
 	$remoteMeta ||= {};
 
 	my ($artist) = $album->artistsForRoles('ARTIST');
-	($artist) ||= $album->artistsForRoles('ALBUMARTIST');
+	($artist) = $album->artistsForRoles('ALBUMARTIST') unless $artist;
 
 	return _objInfoMenu($client,
 		$album->extid,
