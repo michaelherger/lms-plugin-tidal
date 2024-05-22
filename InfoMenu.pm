@@ -219,10 +219,11 @@ sub menuAction {
 	# if we are re-drilling, no need to search, just get our anchor/root
 	if ( defined $itemId ) {
 		my ($key) = $itemId =~ /([^\.]+)/;
-		my $cached = ${$rootFeeds{$key}};
-		main::INFOLOG && $log->is_info && $log->info("re-drilling using cache key: $key");
-		Slim::Control::XMLBrowser::cliQuery('tidal_action', $cached, $request);
-		return;
+		if (my $cached = ${$rootFeeds{$key} || \''}) {
+			main::INFOLOG && $log->is_info && $log->info("re-drilling using cache key: $key");
+			Slim::Control::XMLBrowser::cliQuery('tidal_action', $cached, $request);
+			return;
+		}
 	}
 
 	my $entity  = $request->getRequest(1);
@@ -289,10 +290,11 @@ sub menuBrowse {
 	# if we are descending, no need to search, just get our root
 	if ( defined $itemId ) {
 		my ($key) = $itemId =~ /([^\.]+)/;
-		my $cached = ${$rootFeeds{$key}};
-		main::INFOLOG && $log->is_info && $log->info("re-drilling using cache key: $key");
-		Slim::Control::XMLBrowser::cliQuery('tidal_browse', $cached, $request);
-		return;
+		if (my $cached = ${$rootFeeds{$key} || \''}) {
+			main::INFOLOG && $log->is_info && $log->info("re-drilling using cache key: $key");
+			Slim::Control::XMLBrowser::cliQuery('tidal_browse', $cached, $request);
+			return;
+		}
 	}
 
 	# this key will prefix each action's hierarchy that JSON will sent us which
