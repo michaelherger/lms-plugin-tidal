@@ -508,7 +508,7 @@ sub getFavorites {
 	getAPIHandler($client)->getFavorites(sub {
 		my $items = shift;
 
-		$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1 }) } @$items ] if $items;
+		$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1, sorted => 1 }) } @$items ] if $items;
 
 		$cb->( {
 			items => $items
@@ -950,6 +950,7 @@ sub _renderAlbum {
 		name => $title,
 		line1 => $item->{title},
 		line2 => $artist->{name},
+		textkey => substr( uc($item->{title}), 0, 1 ),
 		favorites_url => 'tidal://album:' . $item->{id},
 		favorites_title => $item->{title} . ' - ' . $artist->{name},
 		favorites_type => 'playlist',
@@ -1084,6 +1085,7 @@ sub _renderArtist {
 	return scalar @$items > 1
 	? {
 		name => $item->{name},
+		textkey => substr( uc($item->{name}), 0, 1 ),
 		type => 'outline',
 		items => $items,
 		itemActions => $itemActions,
