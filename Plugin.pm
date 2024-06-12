@@ -18,6 +18,7 @@ use constant MODULE_MATCH_REGEX => qr/MIX_LIST|MIXED_TYPES_LIST|PLAYLIST_LIST|AL
 my $log = Slim::Utils::Log->addLogCategory({
 	'category'    => 'plugin.tidal',
 	'description' => 'PLUGIN_TIDAL_NAME',
+	'countryCode' => '',
 });
 
 my $prefs = preferences('plugin.tidal');
@@ -35,6 +36,12 @@ sub initPlugin {
 		my ($pref, $userId, $client) = @_;
 		$client->pluginData(api => 0);
 	}, 'userId');
+
+	$prefs->setValidate({ 'validator' => sub {
+		my $new = $_[1];
+		# countryCode must be empty or a 2-letter country code
+		return !defined $new || $new eq '' || $new =~ /^[A-Z]{2}$/i;
+	} }, 'countryCode');
 
 	Plugins::TIDAL::API::Auth->init();
 

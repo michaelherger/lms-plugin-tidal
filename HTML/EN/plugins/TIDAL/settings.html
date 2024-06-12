@@ -45,4 +45,7 @@
 		</select>
 	[% END %]
 
+	[% WRAPPER setting title="PLUGIN_TIDAL_COUNTRY_CODE" desc="PLUGIN_TIDAL_COUNTRY_CODE_DESC" %]
+		<input class="stdedit" type="text" name="pref_countryCode" value="[% prefs.pref_countryCode | html %]" />
+	[% END %]
 [% PROCESS settings/footer.html %]
