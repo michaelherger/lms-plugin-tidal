@@ -883,10 +883,10 @@ sub _renderItem {
 		return _renderTrack($item, $args->{addArtistToTitle}, $args->{playlistId});
 	}
 	elsif ($type eq 'album') {
-		return _renderAlbum($item, $args->{addArtistToTitle});
+		return _renderAlbum($item, $args->{addArtistToTitle}, $args->{sorted});
 	}
 	elsif ($type eq 'artist') {
-		return _renderArtist($client, $item);
+		return _renderArtist($client, $item, $args);
 	}
 	elsif ($type eq 'playlist') {
 		return _renderPlaylist($item);
@@ -945,7 +945,7 @@ sub _renderAlbums {
 }
 
 sub _renderAlbum {
-	my ($item, $addArtistToTitle) = @_;
+	my ($item, $addArtistToTitle, $sorted) = @_;
 
 	# we could also join names
 	my $artist = $item->{artist} || $item->{artists}->[0] || {};
@@ -957,7 +957,7 @@ sub _renderAlbum {
 		name => $title,
 		line1 => $item->{title},
 		line2 => $artist->{name},
-		textkey => substr( uc($item->{title}), 0, 1 ),
+		textkey => $sorted ? substr( uc($item->{title}), 0, 1 ) : undef,
 		favorites_url => 'tidal://album:' . $item->{id},
 		favorites_title => $item->{title} . ' - ' . $artist->{name},
 		favorites_type => 'playlist',
@@ -1041,7 +1041,9 @@ sub _renderArtists {
 }
 
 sub _renderArtist {
-	my ($client, $item) = @_;
+	my ($client, $item, $args) = @_;
+
+	$args ||= {};
 
 	my $items = [{
 		name => cstring($client, 'PLUGIN_TIDAL_TOP_TRACKS'),
@@ -1092,7 +1094,7 @@ sub _renderArtist {
 	return scalar @$items > 1
 	? {
 		name => $item->{name},
-		textkey => substr( uc($item->{name}), 0, 1 ),
+		textkey => $args->{sorted} ? substr( uc($item->{name}), 0, 1 ) : undef,
 		type => 'outline',
 		items => $items,
 		itemActions => $itemActions,
