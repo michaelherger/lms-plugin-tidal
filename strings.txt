@@ -95,12 +95,12 @@ PLUGIN_TIDAL_QUALITY_DESC
 PLUGIN_TIDAL_COUNTRY_CODE
 	DE	Erzwungener Ländercode
 	EN	Country code override
-	FR	Code pays
+	FR	Forcer le code pays
 
 PLUGIN_TIDAL_COUNTRY_CODE_DESC
 	DE	Verwenden Sie diese Einstellung, um einen bestimmten Ländercode zu erzwingen. Dieser wird normalerweise von Ihrem TIDAL-Profil übernommen. Unter bestimmten Umständen kann dies jedoch zu verwirrenden Ergebnissen führen. Z.B. würde "CH" immer deutsche Menüs liefern, auch wenn Sie die Sprache Französisch verwenden. Aber wir können der API nicht sagen, welche Sprache sie verwenden soll.
-	EN	Use this preference to force a specific country code. This would usually be taken from your TIDAL profile. But under certain circumstances this can lead to confusing results. Eg. "CH" would always return German menus, even if you were using the Frenchz language. But we can't tell the API what language to use.
-	FR	Utilisez cette préférence pour forcer un code pays spécifique. Celui-ci est généralement tiré de votre profil TIDAL. Mais dans certaines circonstances, cela peut conduire à des résultats confus. Par exemple, "CH" renverrait toujours des menus allemands, même si vous utilisiez la langue française. Mais nous ne pouvons pas dire à l'API quelle langue utiliser.
+	EN	Use this preference to force a specific country code. This would usually be taken from your TIDAL profile. But under certain circumstances this can lead to confusing results. Eg. "CH" would always return German menus, even if you were using the French language. But we can't tell the API what language to use.
+	FR	Utiliser ce paramètre pour forcer un code pays spécifique. Le code pays est généralement déduit de votre profil TIDAL, ce qui peut ne pas produire le résultat attendu. Par exemple, un code "CH" implique toujours des menus en allemand, même si vous préférez la langue française. (Il n'est pas possible de dire à l’API quelle langue utiliser.)
 
 PLUGIN_TIDAL_MY_MIX
 	DA	Mit Miks
