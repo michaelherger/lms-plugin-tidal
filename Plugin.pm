@@ -16,9 +16,9 @@ use Plugins::TIDAL::ProtocolHandler;
 use constant MODULE_MATCH_REGEX => qr/MIX_LIST|MIXED_TYPES_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
 
 my $log = Slim::Utils::Log->addLogCategory({
-	'category'    => 'plugin.tidal',
-	'description' => 'PLUGIN_TIDAL_NAME',
-	'countryCode' => '',
+	category     => 'plugin.tidal',
+	description  => 'PLUGIN_TIDAL_NAME',
+	defaultLevel => 'WARN',
 });
 
 my $prefs = preferences('plugin.tidal');
@@ -29,6 +29,7 @@ sub initPlugin {
 	$prefs->init({
 		quality => 'HIGH',
 		preferExplicit => 0,
+		countryCode => '',
 	});
 
 	# reset the API ref when a player changes user

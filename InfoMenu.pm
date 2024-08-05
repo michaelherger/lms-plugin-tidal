@@ -10,11 +10,7 @@ use Slim::Utils::Strings qw(cstring);
 use Plugins::TIDAL::API::Async;
 use Plugins::TIDAL::Plugin;
 
-my $log = Slim::Utils::Log->addLogCategory({
-	'category'    => 'plugin.tidal',
-	'description' => 'PLUGIN_TIDAL_NAME',
-});
-
+my $log = logger('plugin.tidal');
 my $prefs = preferences('plugin.tidal');
 
 # see note on memorizing feeds for different dispatches
