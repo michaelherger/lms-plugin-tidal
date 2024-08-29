@@ -6,6 +6,7 @@ PLUGIN_TIDAL_DESC
 	DE	TIDAL Plugin zur Integration mit LMS, ohne Verbindung zu MySqueezebox.com.
 	EN	TIDAL Plugin for LMS, does not depend on MySqueezebox.com.
 	FR	Plugin TIDAL pour LMS (sans lien avec MySqueezebox.com).
+	HU	A TIDAL beépülő modul az LMS-hez, nem függ a MySqueezebox.com webhelytől.
 
 PLUGIN_TIDAL_ADD_ACCOUNT
 	CS	Přidat účet
@@ -13,6 +14,7 @@ PLUGIN_TIDAL_ADD_ACCOUNT
 	DE	Konto hinzufügen
 	EN	Add Account
 	FR	Ajouter un compte
+	HU	Fiók hozzáadása
 	IT	Aggiungi Account
 	NL	Account toevoegen
 
@@ -22,6 +24,7 @@ PLUGIN_TIDAL_AUTH
 	DE	TIDAL Anmeldung
 	EN	TIDAL Authorization
 	FR	Autorisation TIDAL
+	HU	TIDAL azonosítás
 	NL	TIDAL Autorisatie
 	IT	Autorizza TIDAL
 
@@ -31,6 +34,7 @@ PLUGIN_TIDAL_IMPORT_LIBRARY
 	DE	Importieren
 	EN	Import
 	FR	Importer
+	HU	Importőr
 	IT	Import
 	NL	Importeren
 
@@ -42,6 +46,7 @@ PLUGIN_TIDAL_ACCOUNT
 	ES	Cuenta
 	FI	Tili
 	FR	Compte
+	HU	Fiók
 	IT	Account
 	NL	Account
 	NO	Konto
@@ -54,6 +59,7 @@ PLUGIN_TIDAL_FOLLOW_LINK
 	DE	Der folgende Link führt Sie zu TIDAL zur Authentifizierung. Bitte folgen Sie ihm, um dem Logitech Media Server Zugriff auf Ihr TIDAL-Konto zu gewähren. Sobald Sie die Anmeldung abgeschlossen haben, kommen Sie hierher zurück:
 	EN	The following link takes you to TIDAL for authentication. Please follow it grant Logitech Media Server access to your TIDAL account. Once you've completed sign-in come back here:
 	FR	Le lien suivant vous mènera à TIDAL pour authentification. Veuillez le suivre pour accorder à Logitech Media Server l'accès à votre compte TIDAL. Une fois votre inscription terminée, revenez ici :
+	HU	A következő hivatkozás a TIDAL oldalra viszi a hitelesítést. Kérjük, kövesse a Logitech Media Server hozzáférést a TIDAL-fiókjához. Miután befejezte a bejelentkezést, térjen vissza ide:
 	IT	Il seguente link reindirizza all'autenticazione di TIDAL. Per favore, garantisci l'accesso al tuo account TIDAL a Logitech Media Server e torna in questa pagina una volta completato il login.
 
 PLUGIN_TIDAL_REQUIRES_CREDENTIALS
@@ -61,6 +67,7 @@ PLUGIN_TIDAL_REQUIRES_CREDENTIALS
 	DE	Bitte melden Sie sich in den Server-Einstellungen unter Erweitert/TIDAL an TIDAL an.
 	EN	Please go to Settings/Advanced/TIDAL to authenticate with TIDAL.
 	FR	Veuillez vous connecter à TIDAL en accédant aux réglages du plugin TIDAL (paramètres/avancé/TIDAL ou préférences/serveur/TIDAL).
+	HU	A TIDAL-lal történő hitelesítéshez lépjen a Beállítások/Speciális/TIDAL menüpontba.
 	IT	Per autenticarti con TIDAL, vai a Impostazioni/Avanzate/TIDAL
 
 PLUGIN_TIDAL_SELECT_ACCOUNT
@@ -71,6 +78,7 @@ PLUGIN_TIDAL_SELECT_ACCOUNT
 	ES	Seleccionar cuenta
 	FI	Valitse tili
 	FR	Sélectionner le compte
+	HU	Válassz fiókot
 	IT	Seleziona account
 	NL	Account selecteren
 	NO	Velg konto
@@ -83,6 +91,7 @@ PLUGIN_TIDAL_QUALITY
 	DE	Qualität
 	EN	Quality
 	FR	Qualité
+	HU	Minőség
 	IT	Qualità
 
 PLUGIN_TIDAL_QUALITY_DESC
@@ -90,6 +99,7 @@ PLUGIN_TIDAL_QUALITY_DESC
 	DE	Stream Qualität
 	EN	Streaming quality
 	FR	Qualité du streaming
+	HU	Streaming minőség
 	IT	Qualità dello streaming
 
 PLUGIN_TIDAL_COUNTRY_CODE
@@ -101,12 +111,14 @@ PLUGIN_TIDAL_COUNTRY_CODE_DESC
 	DE	Verwenden Sie diese Einstellung, um einen bestimmten Ländercode zu erzwingen. Dieser wird normalerweise von Ihrem TIDAL-Profil übernommen. Unter bestimmten Umständen kann dies jedoch zu verwirrenden Ergebnissen führen. Z.B. würde "CH" immer deutsche Menüs liefern, auch wenn Sie die Sprache Französisch verwenden. Aber wir können der API nicht sagen, welche Sprache sie verwenden soll.
 	EN	Use this preference to force a specific country code. This would usually be taken from your TIDAL profile. But under certain circumstances this can lead to confusing results. Eg. "CH" would always return German menus, even if you were using the French language. But we can't tell the API what language to use.
 	FR	Utiliser ce paramètre pour forcer un code pays spécifique. Le code pays est généralement déduit de votre profil TIDAL, ce qui peut ne pas produire le résultat attendu. Par exemple, un code "CH" implique toujours des menus en allemand, même si vous préférez la langue française. (Il n'est pas possible de dire à l’API quelle langue utiliser.)
+	HU	Ezzel a beállítással egy adott országkódot kényszeríthet ki. Ez általában az Ön TIDAL-profiljából származik. De bizonyos körülmények között ez zavaró eredményekhez vezethet. Például. A "CH" mindig a német menüket adja vissza, még akkor is, ha a francia nyelvet használja. De nem tudjuk megmondani az API-nak, hogy milyen nyelvet használjon.
 
 PLUGIN_TIDAL_MY_MIX
 	DA	Mit Miks
 	DE	Mein Mix
 	EN	My Mix
 	FR	My Mix
+	HU	Saját Mix
 	IT	I miei Mix
 
 PLUGIN_TIDAL_ARTIST_MIX
@@ -114,12 +126,14 @@ PLUGIN_TIDAL_ARTIST_MIX
 	DE	Interpretenmix
 	EN	Artist Mix
 	FR	Radio artiste
+	HU	Előadó Mix
 	IT	Mix basato sull'artista
 
 PLUGIN_TIDAL_SIMILAR_ARTISTS
 	DE	Ähnliche Künstler
 	EN	Similar Artists
 	FR	Artistes similaires
+	HU	Hasonló előadók
 
 PLUGIN_TIDAL_TRACK_MIX
 	CS	Mix skladeb
@@ -129,6 +143,7 @@ PLUGIN_TIDAL_TRACK_MIX
 	ES	Mezcla de canciones
 	FI	Kappalevalikoima
 	FR	Morceaux aléatoires
+	HU	Dal Mix
 	IT	Mix basato sul brano
 	NL	Nummermix
 	NO	Sangmiks
@@ -141,6 +156,7 @@ PLUGIN_TIDAL_MOODS
 	DE	Stimmungen
 	EN	Moods
 	FR	Ambiances
+	HU	Hangulatok
 	IT	Moods
 
 PLUGIN_TIDAL_FEATURES
@@ -148,6 +164,7 @@ PLUGIN_TIDAL_FEATURES
 	EN	Featured
 	ES	Destacados
 	FR	Sélection
+	HU	Kiemelt
 	IT	Consigliati
 	NO	Utvalgte
 	SV	Utvalt
@@ -159,6 +176,7 @@ PLUGIN_TIDAL_ALBUMS_PROGRESS
 	DE	TIDAL Alben
 	EN	TIDAL Albums
 	FR	Albums TIDAL
+	HU	TIDAL Albumok
 	IT	TIDAL Albums
 	NL	TIDAL Albums
 
@@ -168,6 +186,7 @@ PLUGIN_TIDAL_PROGRESS_READ_ALBUMS
 	DE	Lese Alben (%s)...
 	EN	Fetching Albums (%s)...
 	FR	Récupération des albums (%s)...
+	HU	Albumok lekérése (%s)...
 	IT	Recupero gli album (%s)...
 	NL	Albums ophalen (%s)...
 
@@ -177,6 +196,7 @@ PLUGIN_TIDAL_ARTISTS_PROGRESS
 	DE	TIDAL Interpreten
 	EN	TIDAL Artists
 	FR	Artistes TIDAL
+	HU	TIDAL előadók
 	IT	TIDAL Artist
 	NL	TIDAL Artiesten
 
@@ -186,6 +206,7 @@ PLUGIN_TIDAL_PROGRESS_READ_ARTISTS
 	DE	Lese Interpreten (%s)...
 	EN	Fetching Artists (%s)...
 	FR	Récupération des artistes (%s)...
+	HU	Előadók (%s) lekérése...
 	IT	Recupero gli artisti (%s)...
 	NL	Artiesten ophalen (%s)...
 
@@ -195,6 +216,7 @@ PLUGIN_TIDAL_PLAYLISTS_PROGRESS
 	DE	TIDAL Wiedergabelisten
 	EN	TIDAL Playlists
 	FR	Listes de lecture TIDAL
+	HU	TIDAL lejátszási listák
 	IT	TIDAL Playlists
 	NL	TIDAL Afspeellijsten
 
@@ -204,6 +226,7 @@ PLUGIN_TIDAL_PROGRESS_READ_PLAYLISTS
 	DE	Lese Wiedergabelisten (%s)...
 	EN	Fetching Playlists (%s)...
 	FR	Récupération des listes de lecture (%s)...
+	HU	Lejátszási listák (%s) lekérése...
 	IT	Recupero le playlists (%s)...
 	NL	Afspeellijsten ophalen (%s)...
 
@@ -215,6 +238,7 @@ PLUGIN_TIDAL_TOP_TRACKS
 	ES	Pistas principales
 	FI	Suositut kappaleet
 	FR	Morceaux les plus écoutés
+	HU	Legjobb számok
 	IT	Brani più ascoltati
 	NL	Topnummers
 	NO	Mest populære spor
@@ -230,6 +254,7 @@ PLUGIN_TIDAL_EP_SINGLES
 	ES	Singles y EPs
 	FI	Singlet ja EP-levyt
 	FR	Singles et EPs
+	HU	Kislemezek és EP-k
 	IT	Single/EP
 	NL	Singles & EP's
 	NO	Singler og EP-er
@@ -245,6 +270,7 @@ PLUGIN_TIDAL_ON_TIDAL
 	ES	En TIDAL
 	FI	TIDAL:ssä
 	FR	Sur TIDAL
+	HU	A TIDAL-on
 	IT	Su TIDAL
 	NL	Op TIDAL
 	NO	På TIDAL
@@ -256,38 +282,46 @@ PLUGIN_TIDAL_ADD_TO_FAVORITES
 	DE	Zu TIDAL Favoriten hinzufügen
 	EN	Add to TIDAL favorites
 	FR	Ajouter aux favoris TIDAL
+	HU	Hozzáadás a TIDAL kedvenceihez
 
 PLUGIN_TIDAL_REMOVE_FROM_FAVORITES
 	DE	Aus TIDAL Favoriten entfernen
 	EN	Remove from TIDAL favorites
 	FR	Supprimer des favoris TIDAL
+	HU	Eltávolítás a TIDAL kedvencei közül
 
 PLUGIN_TIDAL_ADD_TO_PLAYLIST
 	DE	Zu TIDAL Wiedergabeliste hinzufügen
 	EN	Add to a TIDAL playlist
 	FR	Ajouter à une liste de lecture TIDAL
+	HU	Hozzáadás a TIDAL lejátszási listához
 
 PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST
 	DE	Aus TIDAL Wiedergabeliste entfernen
 	EN	Remove from this playlist
 	FR	Supprimer de cette liste de lecture
+	HU	Eltávolítás erről a lejátszási listáról
 
 PLUGIN_TIDAL_EXPLICIT_ALBUMS
 	DE	Albenfilter
 	EN	Album list filter
 	FR	Filtre d'albums
+	HU	Albumlista szűrő
 
 PLUGIN_TIDAL_HIDE_EXPLICIT
 	DE	Nicht-explizit bevorzugen
 	EN	Prefer non-explicit version
 	FR	Préférer les versions non explicites
+	HU	Ne explicit verzió módon
 
 PLUGIN_TIDAL_SHOW_EXPLICIT
 	DE	Explizite Version bevorzugen
 	EN	Prefer explicit version
 	FR	Préférer les versions explicites
+	HU	Explicit verzió előnyben részesítése
 
 PLUGIN_TIDAL_SHOW_ALL
 	DE	Beide Albumversionen anzeigen
 	EN	Show both
 	FR	Montrer les deux versions des albums.
+	HU	Mutassa mindkettőt
