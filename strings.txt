@@ -103,11 +103,13 @@ PLUGIN_TIDAL_QUALITY_DESC
 	IT	Qualità dello streaming
 
 PLUGIN_TIDAL_COUNTRY_CODE
+	DA	Gennemtving landekode
 	DE	Erzwungener Ländercode
 	EN	Country code override
 	FR	Forcer le code pays
 
 PLUGIN_TIDAL_COUNTRY_CODE_DESC
+	DA	Brug dette for at gennemstinge en specifik landekode. Den kan sædvanligvis tages fra din TIDAL profil. En gang imellem kan det medføre et uønskede resultat. F.eks "CH" vil altid give en Tysk menu, selvom du har valgt Fransk som sprog. Men vi kan ikke gennem API bestemme hvilket sprog der bruges. 
 	DE	Verwenden Sie diese Einstellung, um einen bestimmten Ländercode zu erzwingen. Dieser wird normalerweise von Ihrem TIDAL-Profil übernommen. Unter bestimmten Umständen kann dies jedoch zu verwirrenden Ergebnissen führen. Z.B. würde "CH" immer deutsche Menüs liefern, auch wenn Sie die Sprache Französisch verwenden. Aber wir können der API nicht sagen, welche Sprache sie verwenden soll.
 	EN	Use this preference to force a specific country code. This would usually be taken from your TIDAL profile. But under certain circumstances this can lead to confusing results. Eg. "CH" would always return German menus, even if you were using the French language. But we can't tell the API what language to use.
 	FR	Utiliser ce paramètre pour forcer un code pays spécifique. Le code pays est généralement déduit de votre profil TIDAL, ce qui peut ne pas produire le résultat attendu. Par exemple, un code "CH" implique toujours des menus en allemand, même si vous préférez la langue française. (Il n'est pas possible de dire à l’API quelle langue utiliser.)
@@ -130,6 +132,7 @@ PLUGIN_TIDAL_ARTIST_MIX
 	IT	Mix basato sull'artista
 
 PLUGIN_TIDAL_SIMILAR_ARTISTS
+	DA	Lignende artist
 	DE	Ähnliche Künstler
 	EN	Similar Artists
 	FR	Artistes similaires
@@ -279,48 +282,56 @@ PLUGIN_TIDAL_ON_TIDAL
 	SV	Om TIDAL
 
 PLUGIN_TIDAL_ADD_TO_FAVORITES
+	DA	Tilføj til TIDAL favoritter
 	DE	Zu TIDAL Favoriten hinzufügen
 	EN	Add to TIDAL favorites
 	FR	Ajouter aux favoris TIDAL
 	HU	Hozzáadás a TIDAL kedvenceihez
 
 PLUGIN_TIDAL_REMOVE_FROM_FAVORITES
+	DA	Fjern fra TIDAL favoritter
 	DE	Aus TIDAL Favoriten entfernen
 	EN	Remove from TIDAL favorites
 	FR	Supprimer des favoris TIDAL
 	HU	Eltávolítás a TIDAL kedvencei közül
 
 PLUGIN_TIDAL_ADD_TO_PLAYLIST
+	DA	Tilføj til Tidal afspilningsliste
 	DE	Zu TIDAL Wiedergabeliste hinzufügen
 	EN	Add to a TIDAL playlist
 	FR	Ajouter à une liste de lecture TIDAL
 	HU	Hozzáadás a TIDAL lejátszási listához
 
 PLUGIN_TIDAL_REMOVE_FROM_PLAYLIST
+	DA	Fjern fra denne afspilningsliste
 	DE	Aus TIDAL Wiedergabeliste entfernen
 	EN	Remove from this playlist
 	FR	Supprimer de cette liste de lecture
 	HU	Eltávolítás erről a lejátszási listáról
 
 PLUGIN_TIDAL_EXPLICIT_ALBUMS
+	DA	Albumsfilter
 	DE	Albenfilter
 	EN	Album list filter
 	FR	Filtre d'albums
 	HU	Albumlista szűrő
 
 PLUGIN_TIDAL_HIDE_EXPLICIT
+	DA	Foretrækker ikke-eksplicit version 
 	DE	Nicht-explizit bevorzugen
 	EN	Prefer non-explicit version
 	FR	Préférer les versions non explicites
 	HU	Ne explicit verzió módon
 
 PLUGIN_TIDAL_SHOW_EXPLICIT
+	DA	Foretrækker eksplicit version
 	DE	Explizite Version bevorzugen
 	EN	Prefer explicit version
 	FR	Préférer les versions explicites
 	HU	Explicit verzió előnyben részesítése
 
 PLUGIN_TIDAL_SHOW_ALL
+	DA	Vis begge versioner af albummet
 	DE	Beide Albumversionen anzeigen
 	EN	Show both
 	FR	Montrer les deux versions des albums.
