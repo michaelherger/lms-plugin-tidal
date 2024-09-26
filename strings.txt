@@ -55,12 +55,12 @@ PLUGIN_TIDAL_ACCOUNT
 	SV	Konto
 
 PLUGIN_TIDAL_FOLLOW_LINK
-	DA	Det efterfølgende link tager dig til TIDAL for at autorisere. Her skal du give Logitech Media Server adgang til din TIDAL konto. Efter du er logget på, så kom tilbage hertil:
-	DE	Der folgende Link führt Sie zu TIDAL zur Authentifizierung. Bitte folgen Sie ihm, um dem Logitech Media Server Zugriff auf Ihr TIDAL-Konto zu gewähren. Sobald Sie die Anmeldung abgeschlossen haben, kommen Sie hierher zurück:
-	EN	The following link takes you to TIDAL for authentication. Please follow it grant Logitech Media Server access to your TIDAL account. Once you've completed sign-in come back here:
-	FR	Le lien suivant vous mènera à TIDAL pour authentification. Veuillez le suivre pour accorder à Logitech Media Server l'accès à votre compte TIDAL. Une fois votre inscription terminée, revenez ici :
-	HU	A következő hivatkozás a TIDAL oldalra viszi a hitelesítést. Kérjük, kövesse a Logitech Media Server hozzáférést a TIDAL-fiókjához. Miután befejezte a bejelentkezést, térjen vissza ide:
-	IT	Il seguente link reindirizza all'autenticazione di TIDAL. Per favore, garantisci l'accesso al tuo account TIDAL a Logitech Media Server e torna in questa pagina una volta completato il login.
+	DA	Det efterfølgende link tager dig til TIDAL for at autorisere. Her skal du give Lyrion Music Server adgang til din TIDAL konto. Efter du er logget på, så kom tilbage hertil:
+	DE	Der folgende Link führt Sie zu TIDAL zur Authentifizierung. Bitte folgen Sie ihm, um dem Lyrion Music Server Zugriff auf Ihr TIDAL-Konto zu gewähren. Sobald Sie die Anmeldung abgeschlossen haben, kommen Sie hierher zurück:
+	EN	The following link takes you to TIDAL for authentication. Please follow it grant Lyrion Music Server access to your TIDAL account. Once you've completed sign-in come back here:
+	FR	Le lien suivant vous mènera à TIDAL pour authentification. Veuillez le suivre pour accorder à Lyrion Music Server l'accès à votre compte TIDAL. Une fois votre inscription terminée, revenez ici :
+	HU	A következő hivatkozás a TIDAL oldalra viszi a hitelesítést. Kérjük, kövesse a Lyrion Music Server hozzáférést a TIDAL-fiókjához. Miután befejezte a bejelentkezést, térjen vissza ide:
+	IT	Il seguente link reindirizza all'autenticazione di TIDAL. Per favore, garantisci l'accesso al tuo account TIDAL a Lyrion Music Server e torna in questa pagina una volta completato il login.
 
 PLUGIN_TIDAL_REQUIRES_CREDENTIALS
 	DA	Gå til Settings/advanced/TIDAL for at autorisere med TIDAL
