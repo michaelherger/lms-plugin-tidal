@@ -63,7 +63,7 @@ sub trackGain {
 	my $trackId = getId($url);
 	my $meta = $cache->get( 'tidal_meta_' . ($trackId || '') );
 
-	return unless $meta && defined $meta->{replay_gain} && defined $meta->{peak};
+	return unless ref $meta && defined $meta->{replay_gain} && defined $meta->{peak};
 
 	# TODO - try to get album gain information?
 
@@ -260,7 +260,7 @@ sub getMetadataFor {
 	my $meta = $cache->get( 'tidal_meta_' . ($trackId || '') );
 
 	# if metadata is in cache, we just need to add bitrate
-	if ($meta) {
+	if (ref $meta) {
 		# TODO - remove if we decide to move to our own cache file which we can version
 		$meta->{artist} = $meta->{artist}->{name} if ref $meta->{artist};
 

@@ -439,7 +439,7 @@ sub _menuTrackInfo {
 
 	# if we are here, the metadata of the track is cached
 	my $track = $cache->get("tidal_meta_$id");
-	$log->error("metadata not cached for $id") && return [] unless $track;
+	$log->error("metadata not cached for $id") && return [] unless $track && ref $track;
 
 	# play/add/add_next options except for skins that don't want it
 	my $base = _menuBase($api->client, 'track', $id, $params);

@@ -114,6 +114,8 @@ sub getImageUrl {
 sub typeOfItem {
 	my ($class, $item) = @_;
 
+	return '' unless ref $item;
+
 	if ( $item->{type} && $item->{type} =~ /(?:EXTURL|VIDEO)/ ) {}
 	elsif ( defined $item->{hasPlaylists} && $item->{path} ) {
 		return 'category';
@@ -153,7 +155,9 @@ sub cacheTrackMetadata {
 		my $entry = $_;
 		$entry = $entry->{item} if $entry->{item};
 
-		my $oldMeta = $cache->get( 'tidal_meta_' . $entry->{id}) || {};
+		my $oldMeta = $cache->get( 'tidal_meta_' . $entry->{id});
+		$oldMeta = {} unless ref $oldMeta;
+
 		my $icon = $class->getImageUrl($entry, 'usePlaceholder', 'track');
 		my $artist = $entry->{artist};
 		($artist) = grep { $_->{type} eq 'MAIN'} @{$entry->{artists}} unless $artist;

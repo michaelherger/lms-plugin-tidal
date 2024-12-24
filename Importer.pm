@@ -70,7 +70,7 @@ sub scanAlbums { if (main::SCANNER) {
 		foreach my $album (@$albums) {
 			my $albumDetails = $cache->get('tidal_album_with_tracks_' . $album->{id});
 
-			if ( $albumDetails && $albumDetails->{tracks} && ref $albumDetails->{tracks}) {
+			if ( ref $albumDetails && $albumDetails->{tracks} && ref $albumDetails->{tracks}) {
 				$progress->update($album->{title});
 
 				$class->storeTracks([

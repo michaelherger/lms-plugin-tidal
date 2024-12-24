@@ -455,7 +455,7 @@ sub getFavorites {
 
 	# use cached data unless the collection has changed
 	my $cached = $cache->get($cacheKey);
-	if ($cached && ref $cached->{items}) {
+	if (ref $cached && ref $cached->{items}) {
 		# don't bother verifying timestamp unless we're sure we need to
 		return $cb->($cached->{items}) unless $refresh;
 
@@ -517,7 +517,7 @@ sub getCollectionPlaylists {
 	};
 
 	my $cached = $cache->get($cacheKey);
-	if ($cached && ref $cached->{items}) {
+	if (ref $cached && ref $cached->{items}) {
 		return $cb->($cached->{items}) unless $refresh;
 
 		$self->getLatestCollectionTimestamp(sub {
