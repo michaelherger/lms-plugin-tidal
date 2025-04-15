@@ -151,40 +151,42 @@ sub cacheTrackMetadata {
 
 	return [] unless $tracks;
 
-	return [ map {
+	return [ grep { $_ } map {
 		my $entry = $_;
 		$entry = $entry->{item} if $entry->{item};
 
-		my $oldMeta = $cache->get( 'tidal_meta_' . $entry->{id});
-		$oldMeta = {} unless ref $oldMeta;
+		if ($entry->{allowStreaming} || ! defined $entry->{streamReady}) {
+			my $oldMeta = $cache->get( 'tidal_meta_' . $entry->{id});
+			$oldMeta = {} unless ref $oldMeta;
 
-		my $icon = $class->getImageUrl($entry, 'usePlaceholder', 'track');
-		my $artist = $entry->{artist};
-		($artist) = grep { $_->{type} eq 'MAIN'} @{$entry->{artists}} unless $artist;
+			my $icon = $class->getImageUrl($entry, 'usePlaceholder', 'track');
+			my $artist = $entry->{artist};
+			($artist) = grep { $_->{type} eq 'MAIN'} @{$entry->{artists}} unless $artist;
 
-		# consolidate metadata in case parsing of stream came first (huh?)
-		my $meta = {
-			%$oldMeta,
-			id => $entry->{id},
-			title => $entry->{title},
-			artist => $artist,
-			artists => $entry->{artists},
-			album => $entry->{album}->{title},
-			album_id => $entry->{album}->{id},
-			duration => $entry->{duration},
-			icon => $icon,
-			cover => $icon,
-			replay_gain => $entry->{replayGain} || 0,
-			peak => $entry->{peak},
-			disc => $entry->{volumeNumber},
-			tracknum => $entry->{trackNumber},
-			url => $entry->{url},
-		};
+			# consolidate metadata in case parsing of stream came first (huh?)
+			my $meta = {
+				%$oldMeta,
+				id => $entry->{id},
+				title => $entry->{title},
+				artist => $artist,
+				artists => $entry->{artists},
+				album => $entry->{album}->{title},
+				album_id => $entry->{album}->{id},
+				duration => $entry->{duration},
+				icon => $icon,
+				cover => $icon,
+				replay_gain => $entry->{replayGain} || 0,
+				peak => $entry->{peak},
+				disc => $entry->{volumeNumber},
+				tracknum => $entry->{trackNumber},
+				url => $entry->{url},
+			};
 
-		# cache track metadata aggressively
-		$cache->set( 'tidal_meta_' . $entry->{id}, $meta, time() + 90 * 86400);
+			# cache track metadata aggressively
+			$cache->set( 'tidal_meta_' . $entry->{id}, $meta, time() + 90 * 86400);
 
-		$meta;
+			$meta;
+		}
 	} @$tracks ];
 }
 
