@@ -228,7 +228,7 @@ sub homeFeed {
 		deviceType => 'BROWSER',
 		platform => 'WEB',
 		locale => lc($serverPrefs->get('language')),
-		timeOffset => '+02:00',    # TODO - use real time offset
+		# timeOffset => '+02:00',    # TODO - use real time offset
 	}, {
 		'x-tidal-client-version' => '2025.4.15',
 	});
