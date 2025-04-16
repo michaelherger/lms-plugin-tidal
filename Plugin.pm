@@ -13,7 +13,7 @@ use Plugins::TIDAL::API::Async;
 use Plugins::TIDAL::API::Auth;
 use Plugins::TIDAL::ProtocolHandler;
 
-use constant MODULE_MATCH_REGEX => qr/MIX_LIST|MIXED_TYPES_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST/;
+use constant MODULE_MATCH_REGEX => qr/MIX_LIST|MIXED_TYPES_LIST|PLAYLIST_LIST|ALBUM_LIST|TRACK_LIST|HORIZONTAL_LIST/;
 
 my $log = Slim::Utils::Log->addLogCategory({
 	category     => 'plugin.tidal',
@@ -667,7 +667,7 @@ sub getHome {
 			my $knownType = ($_->{type} =~ MODULE_MATCH_REGEX || $_->{type} eq 'HIGHLIGHT_MODULE');
 
 			if (main::INFOLOG && $log->is_info && !$knownType) {
-				$log->info('Unknown type: ' . $_->{type});
+				$log->info('Unknown type: ' . $_->{type} . ' - ' . $_->{title});
 				main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($_));
 			}
 
@@ -711,7 +711,7 @@ sub getModule {
 	my $module = $params->{module};
 	return $cb->() if $module->{type} !~ MODULE_MATCH_REGEX;
 
-	my $items = $module->{pagedList}->{items};
+	my $items = $module->{pagedList}->{items} || $module->{items};
 	$items = Plugins::TIDAL::API->cacheTrackMetadata($items) if $module->{type} eq 'TRACK_LIST';
 
 	$items = [ map {

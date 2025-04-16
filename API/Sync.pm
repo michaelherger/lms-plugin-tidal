@@ -135,7 +135,7 @@ sub _get {
 		return $result;
 	}
 	else {
-		$log->error("Request failed for $url/$query");
+		$log->error("Request failed for $url/$query: " . $response->code);
 		main::INFOLOG && $log->info(Data::Dump::dump($response));
 	}
 
