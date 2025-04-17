@@ -200,7 +200,9 @@ sub home {
 		$self->page(sub {
 			my ($homeItems) = @_;
 
-			push @$items, @{$homeItems || []};
+			# de-duplicate the menu items
+			my %titles = map { $_->{title} => 1 } grep { $_->{title} } @$items;
+			push @$items, grep { !$titles{$_->{title}} } @{$homeItems || []};
 
 			$cb->($items);
 		}, 'pages/home');
