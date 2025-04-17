@@ -914,7 +914,7 @@ sub _renderPlaylist {
 	return {
 		name => $item->{title},
 		line1 => $item->{title},
-		line2 => join(', ', map { $_->{name} } @{$item->{promotedArtists} || []}),
+		line2 => join(', ', uniq(map { $_->{name} } @{$item->{promotedArtists} || []})),
 		favorites_url => 'tidal://playlist:' . $item->{uuid},
 		# see note on album
 		# play => 'tidal://playlist:' . $item->{uuid},
@@ -1115,7 +1115,7 @@ sub _renderMix {
 	return {
 		name => $item->{title},
 		line1 => $item->{title},
-		line2 => join(', ', map { $_->{name} } @{$item->{artists}}),
+		line2 => join(', ', uniq(map { $_->{name} } @{$item->{artists}})),
 		favorites_url => 'tidal://mix:' . $item->{id},
 		type => 'playlist',
 		url => \&getMix,
@@ -1210,5 +1210,11 @@ sub getAPIHandler {
 
 	return $api;
 }
+
+*uniq = List::Util->can('uniq') || sub {
+	my %seen;
+	return grep { !$seen{$_}++ } @_;
+};
+
 
 1;
