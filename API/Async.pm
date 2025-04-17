@@ -212,27 +212,33 @@ sub home {
 sub homeFeed {
 	my ($self, $cb) = @_;
 
-	$self->_get(LURL . '/home/feed/static', sub {
-		my $page = shift;
-		my $items = $page->{items} || [];
+	_getTZOffset(sub {
+		my ($timeOffset) = @_;
 
-		foreach my $item (@$items) {
-			$item->{items} = [ map {
-				$_->{data}->{title} ||= $_->{data}->{titleTextInfo}->{text} if $_->{data}->{titleTextInfo};
-				$_->{data};
-			} @{$item->{items} || []} ];
-		}
+		$timeOffset = undef unless "$timeOffset" =~ m{^[-+]?\d{1,2}:\d{2}$};
 
-		$cb->($items || []);
-	}, {
-		_ttl => DYNAMIC_TTL,
-		_personal => 1,
-		deviceType => 'BROWSER',
-		platform => 'WEB',
-		locale => lc($serverPrefs->get('language')),
-		# timeOffset => '+02:00',    # TODO - use real time offset
-	}, {
-		'x-tidal-client-version' => '2025.4.15',
+		$self->_get(LURL . '/home/feed/static', sub {
+			my $page = shift;
+			my $items = $page->{items} || [];
+
+			foreach my $item (@$items) {
+				$item->{items} = [ map {
+					$_->{data}->{title} ||= $_->{data}->{titleTextInfo}->{text} if $_->{data}->{titleTextInfo};
+					$_->{data};
+				} @{$item->{items} || []} ];
+			}
+
+			$cb->($items || []);
+		}, {
+			_ttl => DYNAMIC_TTL,
+			_personal => 1,
+			deviceType => 'BROWSER',
+			platform => 'WEB',
+			locale => lc($serverPrefs->get('language')),
+			timeOffset => $timeOffset,
+		}, {
+			'x-tidal-client-version' => '2025.4.15',
+		});
 	});
 }
 
@@ -695,6 +701,18 @@ sub getToken {
 
 	Plugins::TIDAL::API::Auth->refreshToken($cb, $self->userId);
 }
+
+my $_getTZOffset;
+sub _getTZOffset {
+	my ($cb) = @_;
+
+	$_getTZOffset ||= Slim::Utils::DateTime->can('getTZOffsetHHMM')
+		? \&Slim::Utils::DateTime::getTZOffsetHHMM
+		: sub { $_[0]->() };
+
+	$_getTZOffset->($cb);
+}
+
 
 sub _get {
 	my ( $self, $url, $cb, $params, $headers ) = @_;
