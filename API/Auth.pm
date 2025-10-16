@@ -3,7 +3,7 @@ package Plugins::TIDAL::API::Auth;
 use strict;
 use Data::URIEncode qw(complex_to_query);
 use JSON::XS::VersionOneAndTwo;
-use MIME::Base64 qw(encode_base64);
+use MIME::Base64 qw(encode_base64 decode_base64);
 
 use Slim::Networking::SimpleAsyncHTTP;
 use Slim::Utils::Cache;
@@ -11,7 +11,7 @@ use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(string);
 
-use Plugins::TIDAL::API qw(AURL KURL SCOPES GRANT_TYPE_DEVICE);
+use Plugins::TIDAL::API qw(AURL SCOPES GRANT_TYPE_DEVICE);
 
 use constant TOKEN_PATH => '/v1/oauth2/token';
 
@@ -26,7 +26,7 @@ sub init {
 	$cid = $prefs->get('cid');
 	$sec = $prefs->get('sec');
 
-	$class->_fetchKs() unless $cid && $sec;
+	$class->_fetchKs(<DATA>) unless $cid && $sec;
 }
 
 sub initDeviceFlow {
@@ -99,49 +99,11 @@ sub cancelDeviceAuth {
 }
 
 sub _fetchKs {
-	my ($class) = @_;
+	my ($class, $data) = @_;
 
-	Slim::Networking::SimpleAsyncHTTP->new(
-		sub {
-			my $response = shift;
-
-			my $result = eval { from_json($response->content) };
-
-			$@ && $log->error($@);
-			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));
-
-			my $keys = $result->{keys};
-
-			if ($keys) {
-				$keys = [ sort {
-					$b->{valid} <=> $a->{valid}
-				} grep {
-					$_->{cid} && $_->{sec} && $_->{valid}
-				} map {
-					{
-						cid => $_->{clientId},
-						sec => $_->{clientSecret},
-						valid => $_->{valid} =~ /true/i ? 1 : 0
-					}
-				} grep {
-					$_->{formats} =~ /Normal/
-				} @$keys ];
-
-				if (my $key = shift @$keys) {
-					$cid = $key->{cid};
-					$sec = $key->{sec};
-					$prefs->set('cid', $cid);
-					$prefs->set('sec', $sec);
-				}
-			}
-		},
-		sub {
-			my ($http, $error) = @_;
-
-			$log->warn("Error: $error");
-			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($http));
-		}
-	)->get(KURL);
+	($cid, $sec) = @{from_json(decode_base64(($data =~ s/[\x24\x2e]//gr) . '=' x 2))};
+	$prefs->set('cid', $cid);
+	$prefs->set('sec', $sec);
 }
 
 sub refreshToken {
@@ -230,3 +192,6 @@ sub _call {
 }
 
 1;
+
+__DATA__
+$WyJmWDJK$.$eGRtbnRaV0swaXhUIiwiMU5uOUFmREFq$.$eHJnSkZKYktOV0xlQXlLR1ZHbUlOdVhQ$.$UExIVlhBdnhBZz0iXQ$

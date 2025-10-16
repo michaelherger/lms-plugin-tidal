@@ -23,6 +23,13 @@ my $log = Slim::Utils::Log->addLogCategory({
 
 my $prefs = preferences('plugin.tidal');
 
+$prefs->migrate(1,
+	sub {
+		$prefs->remove('cid', 'sec');
+		1;
+	}
+);
+
 sub initPlugin {
 	my $class = shift;
 
