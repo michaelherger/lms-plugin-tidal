@@ -25,7 +25,7 @@ my $prefs = preferences('plugin.tidal');
 
 $prefs->migrate(1,
 	sub {
-		$prefs->remove('cid', 'sec');
+		$prefs->remove('accounts', 'cid', 'sec');
 		1;
 	}
 );
