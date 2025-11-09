@@ -23,12 +23,15 @@ my $log = Slim::Utils::Log->addLogCategory({
 
 my $prefs = preferences('plugin.tidal');
 
-$prefs->migrate(1,
-	sub {
-		$prefs->remove('accounts', 'cid', 'sec');
-		1;
-	}
-);
+$prefs->migrate(1, sub {
+	$prefs->remove('accounts', 'cid', 'sec');
+	1;
+});
+
+$prefs->migrate(2, sub {
+	$prefs->set('quality', 'LOSSLESS') if $prefs->get('quality') eq 'HI_RES';
+	1;
+});
 
 sub initPlugin {
 	my $class = shift;

@@ -39,7 +39,8 @@
 
 	[% WRAPPER setting title="PLUGIN_TIDAL_QUALITY" desc="PLUGIN_TIDAL_QUALITY_DESC" %]
 		<select class="stdedit" name="pref_quality" id="quality">
-		[% FOREACH entry IN [ ['AAC 96Kbps','LOW'], ['AAC 320Kbps', 'HIGH'], ['CD (FLAC)','LOSSLESS'], ['HIRES (FLAC)', 'HI_RES'] ] %]
+		[% #FOREACH entry IN [ ['AAC 96Kbps','LOW'], ['AAC 320Kbps', 'HIGH'], ['CD (FLAC)','LOSSLESS'], ['HIRES (FLAC)', 'HI_RES'] ] %]
+		[% FOREACH entry IN [ ['AAC 96Kbps','LOW'], ['AAC 320Kbps', 'HIGH'], ['CD (FLAC)','LOSSLESS'] ] %]
 			<option [% IF entry.1 == prefs.pref_quality %]selected[% END %] value="[% entry.1 %]">[% entry.0 %]</option>
 		[% END %]
 		</select>
