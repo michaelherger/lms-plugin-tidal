@@ -99,26 +99,7 @@ sub postinitPlugin {
 	my $class = shift;
 
 	if ( Slim::Utils::PluginManager->isEnabled('Plugins::MaterialSkin::Plugin') && Plugins::MaterialSkin::Plugin->can('registerHomeExtra') ) {
-		Plugins::MaterialSkin::Plugin->registerHomeExtra('tidal_home', {
-			title => 'PLUGIN_TIDAL_HERO_HOME',
-			handler => sub { homeHeroes(@_, 'home') },
-			icon => '/material/html/images/tidal.svg',
-			needsPlayer => 1,
-		});
-
-		Plugins::MaterialSkin::Plugin->registerHomeExtra('tidal_my_mix', {
-			title => 'PLUGIN_TIDAL_MY_HERO_MIX',
-			handler => sub { homeHeroes(@_, 'mix') },
-			icon => '/material/html/images/tidal.svg',
-			needsPlayer => 1,
-		});
-
-		Plugins::MaterialSkin::Plugin->registerHomeExtra('tidal_moods', {
-			title => 'PLUGIN_TIDAL_HERO_MOODS',
-			handler => sub { homeHeroes(@_, 'moods') },
-			icon => '/material/html/images/tidal.svg',
-			needsPlayer => 1,
-		});
+		require Plugins::TIDAL::HomeExtras;
 	}
 
 	if ( Slim::Utils::PluginManager->isEnabled('Slim::Plugin::OnlineLibrary::Plugin') ) {
@@ -262,23 +243,6 @@ sub handleFeed {
 	}
 
 	$cb->({ items => $items });
-}
-
-sub homeHeroes {
-	my ($client, $cb, $maxItems, $menu) = @_;
-
-	my @cmd = ("tidal", "items", 0, $maxItems || 100, "menu:home_heroes_${menu}");
-	Slim::Control::Request::executeRequest($client || (Slim::Player::Client::clients())[0], \@cmd, sub {
-		my $response = shift;
-		my $results = $response->getResults() || {};
-
-		my $icon = __PACKAGE__->_pluginDataFor('icon');
-		foreach (@{$results->{item_loop} || []}) {
-			$_->{icon} ||= $icon;
-		}
-
-		$cb->($results);
-	});
 }
 
 sub browseArtistMenu {
