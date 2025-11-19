@@ -69,6 +69,34 @@ sub initPlugin {
 	);
 }
 
+sub handleExtra {
+	my ($class, $client, $cb, $count) = @_;
+
+	$class->SUPER::handleExtra($client, sub {
+		my $results = shift;
+
+		foreach (@{$results->{item_loop} || []}) {
+			if ($_->{text} =~ /spotlight/i) {
+				$_->{icon} = '/plugins/TIDAL/html/spotlight-beam_svg.png';
+			}
+			elsif ($_->{text} =~ /radio/i) {
+				$_->{icon} = '/plugins/TIDAL/html/radio_MTL_svg_radio.png';
+			}
+			elsif ($_->{text} =~ /album/i) {
+				$_->{icon} = '/plugins/TIDAL/html/albums_MTL_svg_album-multi.png';
+			}
+			elsif ($_->{text} =~ /artist/i) {
+				$_->{icon} = '/plugins/TIDAL/html/artists_MTL_svg_artist.png';
+			}
+			elsif ($_->{text} =~ /playlist|\bmix|tracks/i) {
+				$_->{icon} = '/plugins/TIDAL/html/playlists_MTL_svg_list.png';
+			}
+		}
+
+		$cb->($results);
+	}, $count);
+}
+
 1;
 
 
