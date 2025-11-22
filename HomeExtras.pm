@@ -64,7 +64,7 @@ sub initPlugin {
 	my ($class, %args) = @_;
 
 	$class->SUPER::initPlugin(
-		title => 'PLUGIN_TIDAL_HERO_HOME',
+		title => 'HOME',
 		tag => 'home'
 	);
 }
@@ -108,7 +108,7 @@ sub initPlugin {
 	my ($class, %args) = @_;
 
 	$class->SUPER::initPlugin(
-		title => 'PLUGIN_TIDAL_MY_HERO_MIX',
+		title => 'PLUGIN_TIDAL_MY_MIX',
 		tag => 'mix'
 	);
 }
@@ -124,7 +124,7 @@ sub initPlugin {
 	my ($class, %args) = @_;
 
 	$class->SUPER::initPlugin(
-		title => 'PLUGIN_TIDAL_MY_HERO_MIX',
+		title => 'PLUGIN_TIDAL_MOODS',
 		tag => 'moods'
 	);
 }
