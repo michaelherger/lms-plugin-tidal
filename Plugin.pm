@@ -99,7 +99,10 @@ sub postinitPlugin {
 	my $class = shift;
 
 	if ( Slim::Utils::PluginManager->isEnabled('Plugins::MaterialSkin::Plugin') && Plugins::MaterialSkin::Plugin->can('registerHomeExtra') ) {
-		require Plugins::TIDAL::HomeExtras;
+		eval {
+			require Plugins::TIDAL::HomeExtras;
+		};
+		$log->error("Could not load TIDAL Home Extras: $@") if $@;
 	}
 
 	if ( Slim::Utils::PluginManager->isEnabled('Slim::Plugin::OnlineLibrary::Plugin') ) {
