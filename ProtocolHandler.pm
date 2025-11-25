@@ -264,7 +264,7 @@ sub getMetadataFor {
 		# TODO - remove if we decide to move to our own cache file which we can version
 		$meta->{artist} = $meta->{artist}->{name} if ref $meta->{artist};
 
-		my $song = $client->playingSong();
+		my $song = $client->playingSong() if $client;
 		if ($song && ($song->track->url eq $url || $song->currentTrack->url eq $url)) {
 			$meta->{bitrate} = $song->pluginData('bitrate') || 'n/a';
 		}
