@@ -4,6 +4,7 @@ use strict;
 
 use Plugins::TIDAL::Plugin;
 
+Plugins::TIDAL::HomeExtraTIDAL->initPlugin();
 Plugins::TIDAL::HomeExtraHome->initPlugin();
 Plugins::TIDAL::HomeExtraMix->initPlugin();
 Plugins::TIDAL::HomeExtraMoods->initPlugin();
@@ -51,6 +52,22 @@ sub handleExtra {
 
 		$cb->($results);
 	}, $count);
+}
+
+1;
+
+
+package Plugins::TIDAL::HomeExtraTIDAL;
+
+use base qw(Plugins::TIDAL::HomeExtraBase);
+
+sub initPlugin {
+	my ($class, %args) = @_;
+
+	$class->SUPER::initPlugin(
+		title => 'PLUGIN_TIDAL_NAME',
+		tag => 'tidal'
+	);
 }
 
 1;
