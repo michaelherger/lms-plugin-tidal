@@ -67,7 +67,9 @@ sub getUserdata {
 sub getCountryCode {
 	my ($class, $userId) = @_;
 	my $userdata = $class->getUserdata($userId) || {};
-	return uc($prefs->get('countryCode') || $userdata->{countryCode} || 'US');
+	my $countryCode = uc($prefs->get('countryCode') || $userdata->{countryCode} || 'US');
+	$countryCode = 'GB' if $countryCode eq 'UK';
+	return $countryCode;
 }
 
 sub getFormat {
