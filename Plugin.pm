@@ -23,7 +23,7 @@ my $log = Slim::Utils::Log->addLogCategory({
 
 my $prefs = preferences('plugin.tidal');
 
-$prefs->migrate(1, sub {
+$prefs->migrate(3, sub {
 	$prefs->remove('accounts', 'cid', 'sec');
 	1;
 });
