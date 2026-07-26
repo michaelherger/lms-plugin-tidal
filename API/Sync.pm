@@ -3,7 +3,7 @@ package Plugins::TIDAL::API::Sync;
 use strict;
 use Data::URIEncode qw(complex_to_query);
 use Date::Parse qw(str2time);
-use JSON::XS::VersionOneAndTwo;
+use JSON::XS qw(decode_json);
 use List::Util qw(min);
 
 use Slim::Networking::SimpleSyncHTTP;
@@ -108,7 +108,7 @@ sub _get {
 	})->get(BURL . "$url?$query", 'Authorization' => 'Bearer ' . $token);
 
 	if ($response->code == 200) {
-		my $result = eval { from_json($response->content) };
+		my $result = eval { decode_json($response->content) };
 
 		$@ && $log->error($@);
 		main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($result));

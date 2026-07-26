@@ -3,7 +3,7 @@ package Plugins::TIDAL::ProtocolHandler;
 use strict;
 
 use Async::Util;
-use JSON::XS::VersionOneAndTwo;
+use JSON::XS qw(decode_json);
 use URI::Escape qw(uri_escape_utf8);
 use Scalar::Util qw(blessed);
 use MIME::Base64 qw(encode_base64 decode_base64);
@@ -210,7 +210,7 @@ sub getNextTrack {
 				return _gotTrackError("only plays streams $response->{manifestMimeType}", $errorCb);
 			}
 
-			my $manifest = eval { from_json(decode_base64($response->{manifest})) };
+			my $manifest = eval { decode_json(decode_base64($response->{manifest})) };
 			return _gotTrackError($@, $errorCb) if $@;
 
 			my $streamUrl = $manifest->{urls}[0];

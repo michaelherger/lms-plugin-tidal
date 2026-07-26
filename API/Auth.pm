@@ -2,7 +2,7 @@ package Plugins::TIDAL::API::Auth;
 
 use strict;
 use Data::URIEncode qw(complex_to_query);
-use JSON::XS::VersionOneAndTwo;
+use JSON::XS qw(decode_json);
 use MIME::Base64 qw(encode_base64 decode_base64);
 
 use Slim::Networking::SimpleAsyncHTTP;
@@ -101,7 +101,7 @@ sub cancelDeviceAuth {
 sub _fetchKs {
 	my ($class, $data) = @_;
 
-	($cid, $sec) = @{from_json(decode_base64(($data =~ s/[\x24\x2e]//gr) . '=' x 2))};
+	($cid, $sec) = @{decode_json(decode_base64(($data =~ s/[\x24\x2e]//gr) . '=' x 2))};
 	$prefs->set('cid', $cid);
 	$prefs->set('sec', $sec);
 }
@@ -161,7 +161,7 @@ sub _call {
 			my $response = shift;
 
 			main::DEBUGLOG && $log->is_debug && $log->debug(Data::Dump::dump($response));
-			my $result = eval { from_json($response->content) };
+			my $result = eval { decode_json($response->content) };
 
 			$@ && $log->error($@);
 			main::INFOLOG && $log->is_info && $log->info(Data::Dump::dump($result));

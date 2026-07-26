@@ -3,7 +3,6 @@ package Plugins::TIDAL::Settings;
 use strict;
 use base qw(Slim::Web::Settings);
 
-use JSON::XS::VersionOneAndTwo;
 use HTTP::Status qw(RC_MOVED_TEMPORARILY);
 
 use Slim::Utils::Prefs;

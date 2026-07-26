@@ -3,7 +3,7 @@ package Plugins::TIDAL::Settings::Auth;
 use strict;
 use base qw(Slim::Web::Settings);
 
-use JSON::XS::VersionOneAndTwo;
+use JSON::XS qw(encode_json);
 use HTTP::Status qw(RC_MOVED_TEMPORARILY);
 use Tie::Cache::LRU::Expires;
 
@@ -79,7 +79,7 @@ sub checkCredentials {
 		hasCredentials => $deviceCodes{$deviceCode} ? 0 : 1
 	};
 
-	my $content = to_json($result);
+	my $content = encode_json($result);
 	$response->header( 'Content-Length' => length($content) );
 	$response->code(200);
 	$response->header('Connection' => 'close');
