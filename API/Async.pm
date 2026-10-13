@@ -685,6 +685,8 @@ sub getTrackUrl {
 	my ($self, $cb, $id, $params) = @_;
 
 	$params->{_nocache} = 1;
+	# request the stereo asset: Dolby Atmos (EAC3) can't be decoded by faad
+	$params->{immersiveaudio} = 'false';
 
 	$self->_get('/tracks/' . $id . '/playbackinfopostpaywall', sub {
 		$cb->(@_);
