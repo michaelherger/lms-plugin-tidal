@@ -107,6 +107,26 @@ PLUGIN_TIDAL_QUALITY_DESC
 	IT	Qualità dello streaming
 	NL	Stream kwaliteit
 
+PLUGIN_TIDAL_FAVORITES_ORDER
+	DE	Sortierung der Sammlung (Collection)
+	EN	Collection order
+	FR	Ordre de la collection
+
+PLUGIN_TIDAL_FAVORITES_ORDER_DESC
+	DE	Reihenfolge, in der deine Lieblingsalben, -titel und -interpreten angezeigt werden.
+	EN	Order in which your favorite albums, tracks and artists are listed.
+	FR	Ordre dans lequel vos albums, titres et artistes favoris sont affichés.
+
+PLUGIN_TIDAL_ORDER_NAME
+	DE	Alphabetisch
+	EN	Alphabetical
+	FR	Alphabétique
+
+PLUGIN_TIDAL_ORDER_DATE
+	DE	Zuletzt hinzugefügt zuerst
+	EN	Recently added first
+	FR	Ajoutés récemment en premier
+
 PLUGIN_TIDAL_COUNTRY_CODE
 	DA	Gennemtving landekode
 	DE	Erzwungener Ländercode

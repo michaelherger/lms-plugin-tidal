@@ -46,6 +46,13 @@
 		</select>
 	[% END %]
 
+	[% WRAPPER setting title="PLUGIN_TIDAL_FAVORITES_ORDER" desc="PLUGIN_TIDAL_FAVORITES_ORDER_DESC" %]
+		<select class="stdedit" name="pref_favoritesOrder" id="favoritesOrder">
+			<option [% IF prefs.pref_favoritesOrder != 'DATE' %]selected[% END %] value="">[% "PLUGIN_TIDAL_ORDER_NAME" | string %]</option>
+			<option [% IF prefs.pref_favoritesOrder == 'DATE' %]selected[% END %] value="DATE">[% "PLUGIN_TIDAL_ORDER_DATE" | string %]</option>
+		</select>
+	[% END %]
+
 	[% WRAPPER setting title="PLUGIN_TIDAL_COUNTRY_CODE" desc="PLUGIN_TIDAL_COUNTRY_CODE_DESC" %]
 		<input class="stdedit" type="text" name="pref_countryCode" value="[% prefs.pref_countryCode | html %]" />
 	[% END %]

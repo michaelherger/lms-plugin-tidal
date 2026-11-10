@@ -40,6 +40,7 @@ sub initPlugin {
 		quality => 'HIGH',
 		preferExplicit => 0,
 		countryCode => '',
+		favoritesOrder => '',
 	});
 
 	# reset the API ref when a player changes user
@@ -549,7 +550,9 @@ sub getFavorites {
 	getAPIHandler($client)->getFavorites(sub {
 		my $items = shift;
 
-		$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1, sorted => 1 }) } @$items ] if $items;
+		# the A-Z jump index only makes sense for the alphabetical order
+		my $sorted = ($prefs->get('favoritesOrder') || '') ne 'DATE';
+		$items = [ map { _renderItem($client, $_, { addArtistToTitle => 1, sorted => $sorted }) } @$items ] if $items;
 
 		$cb->( {
 			items => $items
