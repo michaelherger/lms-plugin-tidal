@@ -122,6 +122,11 @@ sub postinitPlugin {
 		} );
 	}
 
+	if ( Slim::Utils::PluginManager->isEnabled('Slim::Plugin::DontStopTheMusic::Plugin') ) {
+		require Plugins::TIDAL::DontStopTheMusic;
+		Plugins::TIDAL::DontStopTheMusic->init();
+	}
+
 	if ( Slim::Utils::PluginManager->isEnabled('Plugins::LastMix::Plugin') ) {
 		eval {
 			require Plugins::LastMix::Services;

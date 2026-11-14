@@ -9,6 +9,10 @@ PLUGIN_TIDAL_DESC
 	HU	A TIDAL beépülő modul az LMS-hez, nem függ a MySqueezebox.com webhelytől.
 	NL	TIDAL Plugin voor LMS
 
+PLUGIN_TIDAL_DSTM
+	EN	TIDAL radio (based on recent tracks)
+	NL	TIDAL radio (gebaseerd op recente nummers)
+
 PLUGIN_TIDAL_ADD_ACCOUNT
 	CS	Přidat účet
 	DA	Tilføj konto
