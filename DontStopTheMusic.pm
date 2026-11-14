@@ -2,6 +2,7 @@ package Plugins::TIDAL::DontStopTheMusic;
 
 use strict;
 
+use Async::Util;
 use List::Util qw(max);
 
 use Slim::Plugin::DontStopTheMusic::Plugin;
@@ -19,8 +20,9 @@ my @PICK_PASSES = ( [1, 1], [2, 1], [2, 0], [4, 0] );
 
 # words which mark another version of the same song: "(Remastered 2011)", "[Live]", " - Radio Edit"
 my $VERSION_WORDS = qr/remaster(?:ed)?|live|version|edit|mono|stereo|acoustic|explicit/;
-my $VERSION_IN_BRACKETS = qr/\s*[\(\[][^\)\]]*\b$VERSION_WORDS\b[^\)\]]*[\)\]]/;
-# only strip the part after the dash if it's about the version: \"- 2011 Remaster\", \"- Live\", \"- Radio Edit\"
+# the version word has to come first, so "(I Can't Live Without You)" stays as it is
+my $VERSION_IN_BRACKETS = qr/\s*[\(\[](?:(?:\d{4}|radio|single|album|original|digital)\s+)?$VERSION_WORDS\b[^\)\]]*[\)\]]/;
+# only strip the part after the dash if it's about the version: "- 2011 Remaster", "- Live", "- Radio Edit"
 my $VERSION_AFTER_DASH = qr/\s+-\s+(?:[\w']+\s+){0,2}$VERSION_WORDS\b(?:\s+[\w']+){0,2}\s*$/;
 
 my %STOP_WORDS = map { $_ => 1 } qw(and the feat ft);
@@ -62,22 +64,22 @@ sub dontStopTheMusic {
 
 		main::INFOLOG && $log->is_info && $log->info(sprintf('Auto-mixing TIDAL tracks from %s seed(s)', scalar @$seeds));
 
-		my $pending = scalar @$seeds;
-		my @results;
+		Async::Util::amap(
+			inputs => $seeds,
+			action => sub {
+				my ($seed, $acb) = @_;
+				$api->trackRadio(sub { $acb->(shift || []) }, $seed->{id});
+			},
+			cb => sub {
+				my ($results) = @_;
 
-		for my $i ( 0 .. $#$seeds ) {
-			$api->trackRadio(sub {
-				$results[$i] = shift || [];
-
-				return if --$pending;    # wait for the other requests
-
-				my $urls = _mergeResults($seeds, \@results);
+				my $urls = _mergeResults($seeds, $results);
 
 				main::INFOLOG && $log->is_info && $log->info(sprintf('Returning %s TIDAL tracks', scalar @$urls));
 
 				$cb->($client, $urls);
-			}, $seeds->[$i]->{id});
-		}
+			},
+		);
 	};
 
 	return $getRadios->(\@seeds) if @seeds;
@@ -87,29 +89,27 @@ sub dontStopTheMusic {
 
 	main::INFOLOG && $log->is_info && $log->info(sprintf('No TIDAL seeds - searching TIDAL for %s other track(s)', scalar @others));
 
-	my $pending = scalar @others;
-	my @found;
+	Async::Util::amap(
+		inputs => \@others,
+		action => sub {
+			my ($other, $acb) = @_;
 
-	for my $i ( 0 .. $#others ) {
-		my $other = $others[$i];
-
-		$api->search(sub {
-			my $tracks = shift;
-
-			$found[$i] = _findMatch($other, $tracks);
-
-			return if --$pending;
+			$api->search(sub {
+				# amap needs a defined result: use an empty hash for "no match"
+				$acb->(_findMatch($other, shift) || {});
+			}, {
+				type   => 'tracks',
+				search => join(' ', $other->{artist}, $other->{title}),
+				limit  => 5,
+			});
+		},
+		cb => sub {
+			my ($found) = @_;
 
 			my %seen;
-			my @matches = grep { $_ && !$seen{$_->{id}}++ } @found;
-
-			$getRadios->(\@matches);
-		}, {
-			type   => 'tracks',
-			search => join(' ', $other->{artist}, $other->{title}),
-			limit  => 5,
-		});
-	}
+			$getRadios->([ grep { $_->{id} && !$seen{$_->{id}}++ } @$found ]);
+		},
+	);
 }
 
 # find the track in the search results which matches the artist and title we're looking for
@@ -142,7 +142,11 @@ sub _findMatch {
 
 sub _artistWords {
 	my $name = lc(shift || '');
-	return grep { length($_) > 1 && !$STOP_WORDS{$_} } split /[^\p{L}\p{N}]+/, $name;
+	my @words = grep { length($_) && !$STOP_WORDS{$_} } split /[^\p{L}\p{N}]+/, $name;
+
+	# ignore single letters ("a", "&"), unless that's all there is ("M", "X")
+	my @long = grep { length($_) > 1 } @words;
+	return @long ? @long : @words;
 }
 
 # Merge the radios of the individual seeds:
@@ -164,7 +168,7 @@ sub _mergeResults {
 		foreach my $list (@$results) {
 			my $track = $list->[$n] || next;
 			next if !$track->{id} || $seenId{$track->{id}}++;
-			next if $seenKey{ _titleKey($track->{artist}, $track->{title}) }++;
+			next if $track->{artist} && $track->{title} && $seenKey{ _titleKey($track->{artist}, $track->{title}) }++;
 
 			push @candidates, {
 				id     => $track->{id},
