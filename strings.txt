@@ -10,7 +10,10 @@ PLUGIN_TIDAL_DESC
 	NL	TIDAL Plugin voor LMS
 
 PLUGIN_TIDAL_DSTM
+	DA	TIDAL-radio (baseret på seneste numre)
+	DE	TIDAL Radio (basierend auf zuletzt gespielten Titeln)
 	EN	TIDAL radio (based on recent tracks)
+	FR	Radio TIDAL (basée sur les titres récents)
 	NL	TIDAL radio (gebaseerd op recente nummers)
 
 PLUGIN_TIDAL_ADD_ACCOUNT
@@ -139,7 +142,7 @@ PLUGIN_TIDAL_COUNTRY_CODE
 	NL	Geforceerde landcode
 
 PLUGIN_TIDAL_COUNTRY_CODE_DESC
-	DA	Brug dette for at gennemstinge en specifik landekode. Den kan sædvanligvis tages fra din TIDAL profil. En gang imellem kan det medføre et uønskede resultat. F.eks "CH" vil altid give en Tysk menu, selvom du har valgt Fransk som sprog. Men vi kan ikke gennem API bestemme hvilket sprog der bruges. 
+	DA	Brug dette for at gennemstinge en specifik landekode. Den kan sædvanligvis tages fra din TIDAL profil. En gang imellem kan det medføre et uønskede resultat. F.eks "CH" vil altid give en Tysk menu, selvom du har valgt Fransk som sprog. Men vi kan ikke gennem API bestemme hvilket sprog der bruges.
 	DE	Verwenden Sie diese Einstellung, um einen bestimmten Ländercode zu erzwingen. Dieser wird normalerweise von Ihrem TIDAL-Profil übernommen. Unter bestimmten Umständen kann dies jedoch zu verwirrenden Ergebnissen führen. Z.B. würde "CH" immer deutsche Menüs liefern, auch wenn Sie die Sprache Französisch verwenden. Aber wir können der API nicht sagen, welche Sprache sie verwenden soll.
 	EN	Use this preference to force a specific country code. This would usually be taken from your TIDAL profile. But under certain circumstances this can lead to confusing results. Eg. "CH" would always return German menus, even if you were using the French language. But we can't tell the API what language to use.
 	FR	Utiliser ce paramètre pour forcer un code pays spécifique. Le code pays est généralement déduit de votre profil TIDAL, ce qui peut ne pas produire le résultat attendu. Par exemple, un code "CH" implique toujours des menus en allemand, même si vous préférez la langue française. (Il n'est pas possible de dire à l’API quelle langue utiliser.)
@@ -358,7 +361,7 @@ PLUGIN_TIDAL_EXPLICIT_ALBUMS
 	NL	Album lijst filter
 
 PLUGIN_TIDAL_HIDE_EXPLICIT
-	DA	Foretrækker ikke-eksplicit version 
+	DA	Foretrækker ikke-eksplicit version
 	DE	Nicht-explizit bevorzugen
 	EN	Prefer non-explicit version
 	FR	Préférer les versions non explicites
