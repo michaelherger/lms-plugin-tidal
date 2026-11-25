@@ -1045,16 +1045,19 @@ sub _renderTrack {
 	$title .= ' - ' . $item->{artist}->{name} if $addArtistToTitle;
 	my $url = "tidal://$item->{id}." . Plugins::TIDAL::API::getFormat();
 
+	# TIDAL flags tracks it detected as (wholly) AI generated
+	my $aiTag = $item->{ai} ? ' [' . Slim::Utils::Strings::string('PLUGIN_TIDAL_AI_TAG') . ']' : '';
+
 	my $fixedParams = {
 		playlistId => $playlistId,
 		index => $index,
 	} if $playlistId;
 
 	return {
-		name => $title,
+		name => $title . $aiTag,
 		type => 'audio',
 		favorites_title => $item->{title} . ' - ' . $item->{artist}->{name},
-		line1 => $item->{title},
+		line1 => $item->{title} . $aiTag,
 		line2 => $item->{artist}->{name},
 		on_select => 'play',
 		url => $url,

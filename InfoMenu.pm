@@ -445,6 +445,11 @@ sub _menuTrackInfo {
 	my $base = _menuBase($api->client, 'track', $id, $params);
 	push @$items, @$base if @$base;
 
+	push @$items, {
+		type => 'text',
+		name => cstring($api->client, 'PLUGIN_TIDAL_AI_GENERATED'),
+	} if $track->{ai};
+
 	# if we have a playlist id, then we might remove that track from playlist
 	if ($params->{playlistId} ) {
 		if ($params->{menu}) {
