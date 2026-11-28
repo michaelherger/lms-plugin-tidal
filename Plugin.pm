@@ -5,7 +5,10 @@ use Async::Util;
 
 use base qw(Slim::Plugin::OPMLBased);
 
+use File::Spec::Functions qw(catdir);
+
 use Slim::Utils::Log;
+use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(cstring);
 
@@ -65,6 +68,9 @@ sub initPlugin {
 		Plugins::TIDAL::Settings::Auth->new();
 		Plugins::TIDAL::InfoMenu->init();
 	}
+
+	my $base = $class->_pluginDataFor('basedir');
+	Slim::Utils::Misc::addFindBinPaths(catdir($base, 'Bin')) if $base;
 
 	Slim::Player::ProtocolHandlers->registerHandler('tidal', 'Plugins::TIDAL::ProtocolHandler');
 	# Hijack the old wimp:// URLs
