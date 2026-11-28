@@ -108,7 +108,7 @@ PLUGIN_TIDAL_QUALITY
 PLUGIN_TIDAL_QUALITY_DESC
 	DA	Streaming kvalitet
 	DE	Stream Qualität
-	EN	Streaming quality
+	EN	Streaming quality. Hi-Res is FLAC above CD quality, remuxed from TIDAL's DASH stream with ffmpeg.
 	FR	Qualité du streaming
 	HU	Streaming minőség
 	IT	Qualità dello streaming

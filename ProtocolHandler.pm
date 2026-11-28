@@ -7,6 +7,7 @@ use JSON::XS qw(decode_json);
 use URI::Escape qw(uri_escape_utf8);
 use Scalar::Util qw(blessed);
 use MIME::Base64 qw(encode_base64 decode_base64);
+use File::Temp ();
 
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
@@ -166,32 +167,23 @@ sub getNextTrack {
 		return;
 	}
 
+	my $quality = $prefs->get('quality') || 'HIGH';
+	# TIDAL names hi-res FLAC HI_RES_LOSSLESS. HI_RES is the previous setting value.
+	my $apiQuality = $quality eq 'HI_RES' ? 'HI_RES_LOSSLESS' : $quality;
+
 	Async::Util::achain(
 		steps => [
 			sub {
 				my ($result, $acb) = @_;
-
-				Plugins::TIDAL::Plugin::getAPIHandler($client)->getTrackUrl(sub {
-					$acb->($_[0])
-				}, $trackId, {
-					audioquality => $prefs->get('quality'),
-					playbackmode => 'STREAM',
-					assetpresentation => 'FULL',
-				});
+				_requestTrackUrl($client, $acb, $trackId, $apiQuality);
 			},
 			sub {
 				my ($result, $acb) = @_;
 
-				if ($result && $result->{manifestMimeType} !~ m|application/vnd.tidal.bt| && $prefs->get('quality') eq 'HI_RES') {
-					$log->warn("failed to get streamable HiRes track ($url - $result->{manifestMimeType}), trying regular CD quality instead");
-					Plugins::TIDAL::Plugin::getAPIHandler($client)->getTrackUrl(sub {
-						$acb->($_[0])
-					}, $trackId, {
-						audioquality => 'LOSSLESS',
-						playbackmode => 'STREAM',
-						assetpresentation => 'FULL',
-					});
-
+				if (_hiresNeedsCdFallback($result, $quality)) {
+					my $mime = $result && $result->{manifestMimeType} || 'none';
+					$log->warn("failed to get streamable HiRes track ($url - $mime), trying regular CD quality instead");
+					_requestTrackUrl($client, $acb, $trackId, 'LOSSLESS');
 					return;
 				}
 
@@ -205,27 +197,54 @@ sub getNextTrack {
 
 			return _gotTrackError($error, $errorCb) if $error;
 
-			# no DASH or other for now
-			if ($response->{manifestMimeType} !~ m|application/vnd.tidal.bt|) {
-				return _gotTrackError("only plays streams $response->{manifestMimeType}", $errorCb);
+			my $mime = $response->{manifestMimeType} || '';
+			my ($streamUrl, $format);
+
+			if ($mime =~ m|application/vnd\.tidal\.bt|) {
+				my $manifest = eval { decode_json(decode_base64($response->{manifest})) };
+				return _gotTrackError($@, $errorCb) if $@;
+
+				$streamUrl = $manifest->{urls}[0];
+				($format) = ($manifest->{mimeType} || '') =~ m|audio/(\w+)|;
+				$format ||= 'flc';
+				$format =~ s/flac/flc/;
 			}
+			elsif ($mime eq 'application/dash+xml') {
+				my $xml = eval { decode_base64($response->{manifest}) };
+				return _gotTrackError($@ || 'empty DASH manifest', $errorCb) if $@ || !$xml;
 
-			my $manifest = eval { decode_json(decode_base64($response->{manifest})) };
-			return _gotTrackError($@, $errorCb) if $@;
-
-			my $streamUrl = $manifest->{urls}[0];
-			my ($format) = $manifest->{mimeType} =~ m|audio/(\w+)|;
-			$format =~ s/flac/flc/;
+				$streamUrl = _writeDashManifest($xml);
+				return _gotTrackError('DASH manifest was not an MPD', $errorCb) unless $streamUrl;
+				$format = 'mpd';
+			}
+			else {
+				return _gotTrackError("only plays streams $mime", $errorCb);
+			}
 
 			# TODO - store album gain information
 
-			# this should not happen
 			if ($format ne Plugins::TIDAL::API::getFormat) {
-				$log->warn("did not get the expected format for $trackId ($format <> " . Plugins::TIDAL::API::getFormat() . ')');
+				$log->warn("did not get the expected format for $trackId ($format <> " . Plugins::TIDAL::API::getFormat() . ')') unless $format eq 'mpd';
 				$song->pluginData(format => $format);
 			}
 
-			# main::INFOLOG && $log->info("got $format track at $streamUrl");
+			if ($format eq 'mpd') {
+				$song->track->channels(2);
+				if ($response->{sampleRate}) {
+					$song->track->samplerate($response->{sampleRate});
+				}
+				if ($response->{bitDepth}) {
+					$song->track->samplesize($response->{bitDepth});
+				}
+				if ($response->{bitDepth} && $response->{sampleRate}) {
+					$song->pluginData('bitrate', $response->{bitDepth} . '-bit/' . int($response->{sampleRate} / 1000) . 'kHz');
+				}
+				$song->streamUrl($streamUrl);
+				$client->currentPlaylistUpdateTime( Time::HiRes::time() );
+				Slim::Control::Request::notifyFromArray( $client, [ 'newmetadata' ] );
+				return $successCb->();
+			}
+
 			$song->streamUrl($streamUrl);
 
 			# now try to acquire the header for seeking and various details
@@ -318,6 +337,61 @@ sub getIcon {
 sub getId {
 	my ($id) = $_[0] =~ m{(?:tidal|wimp)://(\d+)};
 	return $id;
+}
+
+sub _requestTrackUrl {
+	my ($client, $cb, $trackId, $quality) = @_;
+
+	Plugins::TIDAL::Plugin::getAPIHandler($client)->getTrackUrl(sub {
+		$cb->($_[0]);
+	}, $trackId, {
+		audioquality => $quality,
+		playbackmode => 'STREAM',
+		assetpresentation => 'FULL',
+	});
+}
+
+sub _isHiresQuality {
+	my $quality = shift || '';
+	return $quality eq 'HI_RES' || $quality eq 'HI_RES_LOSSLESS';
+}
+
+# Hi-res FLAC above CD quality is delivered as MPEG-DASH. Play that when ffmpeg
+# can remux it. Otherwise ask again for the direct CD stream.
+sub _hiresNeedsCdFallback {
+	my ($result, $quality) = @_;
+
+	return 0 unless _isHiresQuality($quality);
+	return 1 unless ref $result eq 'HASH';
+
+	my $mime = $result->{manifestMimeType} || '';
+	return 0 if $mime =~ m|application/vnd\.tidal\.bt|;
+	return 1 if $mime ne 'application/dash+xml';
+	return !Slim::Utils::Misc::findbin('ffmpeg');
+}
+
+sub _writeDashManifest {
+	my $xml = shift;
+	return unless defined $xml && $xml =~ /<MPD[\s>]/;
+
+	my $dir = Slim::Utils::Misc::getTempDir();
+	my $now = time;
+	if (opendir my $dh, $dir) {
+		while (my $name = readdir $dh) {
+			next unless $name =~ /\.mpd$/;
+			my $path = "$dir/$name";
+			my $mtime = (stat $path)[9] || $now;
+			unlink $path if $now - $mtime > 7200;
+		}
+		closedir $dh;
+	}
+
+	my $fh = File::Temp->new(DIR => $dir, SUFFIX => '.mpd', UNLINK => 0);
+	binmode $fh;
+	print $fh $xml;
+	close $fh;
+
+	return Slim::Utils::Misc::fileURLFromPath("$fh");
 }
 
 1;

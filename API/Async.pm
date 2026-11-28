@@ -692,6 +692,8 @@ sub getTrackUrl {
 	my ($self, $cb, $id, $params) = @_;
 
 	$params->{_nocache} = 1;
+	# The login client is capped at CD. Ask for a playback-profile token.
+	$params->{_playback} = 1;
 	# request the stereo asset: Dolby Atmos (EAC3) can't be decoded by faad
 	$params->{immersiveaudio} = 'false';
 
@@ -701,12 +703,23 @@ sub getTrackUrl {
 }
 
 sub getToken {
-	my ( $self, $cb ) = @_;
+	my ( $self, $cb, $playback ) = @_;
 
 	my $userId = $self->userId;
-	my $token = $cache->get("tidal_at_$userId");
+	my $cacheKey = $playback ? "tidal_playback_at_$userId" : "tidal_at_$userId";
+	my $token = $cache->get($cacheKey);
 
 	return $cb->($token) if $token;
+
+	if ($playback) {
+		return Plugins::TIDAL::API::Auth->refreshPlaybackToken(sub {
+			my $playbackToken = shift;
+			return $cb->($playbackToken) if $playbackToken;
+
+			$log->warn('hi-res playback token failed, using the standard token');
+			getToken($self, $cb);
+		}, $userId);
+	}
 
 	Plugins::TIDAL::API::Auth->refreshToken($cb, $self->userId);
 }
@@ -749,6 +762,9 @@ sub _delete { if (CAN_MORE_HTTP_VERBS) {
 
 sub _call {
 	my ( $self, $url, $cb, $params, $headers ) = @_;
+
+	$params ||= {};
+	my $playback = delete $params->{_playback};
 
 	$self->getToken(sub {
 		my ($token) = @_;
@@ -891,7 +907,7 @@ sub _call {
 				$http->$method("$url?$query", %$headers);
 			}
 		}
-	});
+	}, $playback);
 }
 
 1;

@@ -15,6 +15,12 @@ use Plugins::TIDAL::API qw(AURL SCOPES GRANT_TYPE_DEVICE);
 
 use constant TOKEN_PATH => '/v1/oauth2/token';
 
+# TIDAL grants hi-res FLAC per client profile. The login client above is capped
+# at CD. This is the profile tiddl uses for HI_RES_LOSSLESS; the same refresh
+# token exchanges for a playback token.
+use constant PLAYBACK_CID => '6BDSRdpK9hqEBTgU';
+use constant PLAYBACK_SEC => 'xeuPmY7nbpZ9IIbLAcQ93shka1VNheUAqN6IcszjTG8=';
+
 my $cache = Slim::Utils::Cache->new();
 my $log = logger('plugin.tidal');
 my $prefs = preferences('plugin.tidal');
@@ -146,6 +152,67 @@ sub _storeTokens {
 	}
 
 	return $result->{access_token};
+}
+
+# Exchange the stored refresh token for a token that is allowed to fetch hi-res.
+# The secret goes in the form body. Basic auth with this profile is rejected.
+sub refreshPlaybackToken {
+	my ( $class, $cb, $userId ) = @_;
+
+	my $accounts = $prefs->get('accounts') || {};
+	my $profile  = $accounts->{$userId} || {};
+	my $refreshToken = $profile->{refreshToken};
+
+	unless ($refreshToken) {
+		$log->error('Did find neither access nor refresh token. Please re-authenticate.');
+		return $cb->();
+	}
+
+	my $cached = $cache->get("tidal_playback_at_$userId");
+	return $cb->($cached) if $cached;
+
+	Slim::Networking::SimpleAsyncHTTP->new(
+		sub {
+			my $response = shift;
+			my $result = eval { decode_json($response->content) };
+
+			if ($@ || !$result->{access_token}) {
+				$log->error($@ || 'playback token refresh returned no access token');
+				return $cb->();
+			}
+
+			my $ttl = ($result->{expires_in} || 3600) - 300;
+			$ttl = 60 if $ttl < 60;
+			$cache->set("tidal_playback_at_$userId", $result->{access_token}, $ttl);
+
+			if ($result->{refresh_token} && $result->{refresh_token} ne $refreshToken) {
+				$profile->{refreshToken} = $result->{refresh_token};
+				$accounts->{$userId} = $profile;
+				$prefs->set('accounts', $accounts);
+			}
+
+			$cb->($result->{access_token});
+		},
+		sub {
+			my ($http, $error) = @_;
+			$log->error("playback token refresh: $error");
+			$cb->();
+		},
+		{
+			timeout => 15,
+			cache => 0,
+			expiry => 0,
+		}
+	)->post(AURL . TOKEN_PATH,
+		'Content-Type' => 'application/x-www-form-urlencoded',
+		complex_to_query({
+			client_id     => PLAYBACK_CID,
+			client_secret => PLAYBACK_SEC,
+			grant_type    => 'refresh_token',
+			refresh_token => $refreshToken,
+			scope         => SCOPES,
+		}),
+	);
 }
 
 sub _call {

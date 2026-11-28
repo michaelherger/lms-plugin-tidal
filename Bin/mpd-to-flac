@@ -1,0 +1,84 @@
+#!/usr/bin/perl
+# Read a TIDAL MPEG-DASH manifest, fetch the FLAC fragments, and write one
+# FLAC stream to stdout. ffmpeg only sees a local pipe. Its HTTPS stack
+# segfaults on this build.
+use strict;
+use warnings;
+
+use HTTP::Tiny ();
+
+my $path = shift or die "usage: mpd-to-flac manifest.mpd [start-seconds]\n";
+my $start = shift;
+$path =~ s/^["']|["']$//g;
+$path =~ s{^file://}{};
+
+open my $in, '<', $path or die "open $path: $!\n";
+my $xml = do { local $/; <$in> };
+close $in;
+
+my ($init) = $xml =~ /initialization="([^"]+)"/;
+my ($media) = $xml =~ /media="([^"]+)"/;
+my ($start_number) = $xml =~ /startNumber="(\d+)"/;
+$start_number = defined $start_number ? $start_number : 1;
+
+for ($init, $media) {
+	next unless defined;
+	s/&amp;/&/g;
+	s/&quot;/"/g;
+	s/&lt;/</g;
+	s/&gt;/>/g;
+}
+
+my $segments = 0;
+while ($xml =~ /<S\b([^>]*?)\/>/g) {
+	my ($repeat) = $1 =~ /\br="(\d+)"/;
+	$segments += (defined $repeat ? $repeat : 0) + 1;
+}
+
+die "DASH manifest has no FLAC segments\n" unless $init && $media && $segments;
+
+$SIG{PIPE} = sub { exit 0 };
+
+sub ffmpeg_bin {
+	my @dirs = split /:/, ($ENV{PATH} || '');
+	push @dirs, '/usr/local/bin', '/usr/bin';
+	for my $dir (@dirs) {
+		next if !defined $dir || $dir eq '';
+		my $path = "$dir/ffmpeg";
+		return $path if -x $path;
+	}
+	return 'ffmpeg';
+}
+
+my @cmd = (ffmpeg_bin(), '-v', 'error', '-vn');
+push @cmd, '-ss', $start if defined $start && $start ne '';
+push @cmd, '-i', 'pipe:0', '-c:a', 'copy', '-f', 'flac', '-';
+
+my $pid = open(my $ff, '|-', @cmd) or die "ffmpeg: $!\n";
+binmode $ff;
+
+my $http = HTTP::Tiny->new(
+	timeout => 60,
+	agent   => 'Lyrion-TIDAL/1.11.1',
+);
+
+sub fetch {
+	my ($url) = @_;
+	my $res = $http->get($url);
+	unless ($res->{success}) {
+		my $status = $res->{status} || 0;
+		die "segment download failed ($status)\n";
+	}
+	return $res->{content};
+}
+
+print $ff fetch($init);
+for (my $i = 0; $i < $segments; $i++) {
+	my $url = $media;
+	my $number = $start_number + $i;
+	$url =~ s/\$Number\$/$number/g;
+	print $ff fetch($url);
+}
+
+close $ff;
+exit $? >> 8;
